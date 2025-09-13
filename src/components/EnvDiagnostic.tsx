@@ -2,9 +2,8 @@
 
 // Componente temporal para diagnosticar variables de entorno
 export default function EnvDiagnostic() {
-  if (process.env.NODE_ENV !== 'production') {
-    return null; // Solo mostrar en producción para debug
-  }
+  // Debug completado - Panel desactivado
+  return null;
 
   const envVars = {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
