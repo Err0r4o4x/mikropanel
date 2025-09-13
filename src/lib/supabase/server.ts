@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 // Validar variables de entorno - SIN FALLBACKS por seguridad
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE;
 
 if (!supabaseUrl || supabaseUrl === 'undefined') {
