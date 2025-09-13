@@ -11,13 +11,15 @@ export default function SupabaseStorageProvider({ children }: { children: React.
   useEffect(() => {
     async function initializeStorage() {
       try {
-        // Migrar y activar Supabase Storage
-        await migrateAndActivate();
+        // TEMPORALMENTE DESACTIVADO - Solo inicializar sin migrar para evitar errores
+        console.log('🔧 Supabase Storage temporalmente desactivado para debugging');
         setIsInitialized(true);
+        
+        // TODO: Reactivar después de resolver problemas de variables de entorno
+        // await migrateAndActivate();
       } catch (err) {
         console.error('Error inicializando Supabase Storage:', err);
         setError('Error conectando con la base de datos');
-        // En caso de error, continuar con localStorage normal
         setIsInitialized(true);
       }
     }
