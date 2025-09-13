@@ -5,7 +5,7 @@ type Body = {
   equipo_id: string
   cliente_id?: string
   tipo: 'alta'|'baja'|'asignacion'|'venta'|'devolucion'|'ajuste'
-  detalle?: Record<string, any>
+  detalle?: Record<string, unknown>
   monto_usd?: number
   created_by?: string
 }
@@ -31,7 +31,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: error.message }, { status: 400 })
     }
     return NextResponse.json({ ok: true })
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || 'Error inesperado' }, { status: 500 })
+  } catch (e: unknown) {
+    return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Error inesperado' }, { status: 500 })
   }
 }

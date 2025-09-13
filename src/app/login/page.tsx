@@ -31,31 +31,24 @@ export default function LoginPage() {
       });
 
       if (res.ok) {
-        // ✅ Guardar usuario con ROL en localStorage para la UI (sidebar, permisos)
+        // ✅ Obtener datos del usuario desde la respuesta de la API
         try {
-          const uname = username.trim().toLowerCase();
+          const data = await res.json();
+          const user = data.user;
 
-          // Lee la "semilla" de usuarios persistida por SeedUsers
-          const seedRaw = localStorage.getItem("app_users");
-          const seed = seedRaw ? JSON.parse(seedRaw) : [];
-          const found = Array.isArray(seed)
-            ? seed.find((u: any) => (u?.username || "").toLowerCase() === uname)
-            : null;
-
-          // Rol por seed; si no hay seed, default: misael=admin, otros=tech
-          const rol: string = found?.rol || (uname === "misael" ? "admin" : "tech");
-
+          // Guardar usuario en localStorage para la UI (sidebar, permisos)
           setCurrentUser({
-            id: `u-${uname}`,
-            username: uname,            // lo mostramos Capitalizado en el Sidebar
-            rol,
-            isAdmin: rol === "admin",
+            id: user.id,
+            username: user.username,
+            rol: user.role,
+            isAdmin: user.role === "admin" || user.role === "owner",
           });
-        } catch {
-          // Si por alguna razón falla la semilla, igual seguimos: la cookie ya está
+        } catch (error) {
+          console.error('Error procesando respuesta de login:', error);
+          // Continuar aunque falle el localStorage
         }
 
-        // La API ya te setea cookie 'auth' → redirige al panel
+        // La API ya estableció la cookie JWT → redirigir al panel
         router.replace("/");
         return;
       }

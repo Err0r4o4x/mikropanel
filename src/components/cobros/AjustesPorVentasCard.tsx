@@ -32,7 +32,7 @@ function periodStartFromResetDay(now = new Date(), resetDay = RESET_DAY) {
 }
 
 export default function AjustesPorVentasCard() {
-  const [touch, setTouch] = useState(0);
+  const [, setTouch] = useState(0);
 
   // Escuchar "touch" desde Inventario para refrescar en vivo
   useEffect(() => {
@@ -45,7 +45,7 @@ export default function AjustesPorVentasCard() {
 
   /* @MB-AJUSTES-CALC */
   const { total, detalle } = useMemo(() => {
-    let movs: any[] = [];
+    let movs: Array<{ tipo?: string; equipoEtiqueta?: string; fechaISO?: string; id?: string; pagado?: boolean }> = [];
     try {
       movs = JSON.parse(localStorage.getItem(LS_MOVS) || "[]");
     } catch {}
@@ -72,7 +72,7 @@ export default function AjustesPorVentasCard() {
       total,
     };
     return { total, detalle };
-  }, [touch]);
+  }, []);
 
   return (
     <div className="rounded-2xl border bg-white p-5 shadow-sm">

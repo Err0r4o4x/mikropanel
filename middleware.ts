@@ -2,11 +2,16 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
-const secret = new TextEncoder().encode(process.env.JWT_SECRET || "dev-secret");
+const secret = new TextEncoder().encode(process.env.JWT_SECRET || "mikropanel-fallback-secret");
 
-async function isValid(token?: string) {
+async function isValidToken(token?: string) {
   if (!token) return false;
-  try { await jwtVerify(token, secret); return true; } catch { return false; }
+  try { 
+    await jwtVerify(token, secret); 
+    return true; 
+  } catch { 
+    return false; 
+  }
 }
 
 export async function middleware(req: NextRequest) {
@@ -20,12 +25,15 @@ export async function middleware(req: NextRequest) {
 
   if (isPublic) return NextResponse.next();
 
+  // Verificar JWT token
   const token = req.cookies.get("auth")?.value;
-  if (!(await isValid(token))) {
+  
+  if (!(await isValidToken(token))) {
     const url = req.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
   }
+  
   return NextResponse.next();
 }
 

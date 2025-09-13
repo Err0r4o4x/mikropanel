@@ -19,7 +19,13 @@ export async function POST(req: Request) {
     // (Opcional) Actualizar flags del cliente si los manejas en esa tabla.
     // await supabaseAdmin.from('clientes').update({ ... }).eq('id', b.cliente_id)
 
-    const inserts: any[] = []
+    const inserts: Array<{
+      equipo_id: string;
+      cliente_id: string;
+      tipo: 'asignacion';
+      detalle: Record<string, unknown>;
+      created_by: string;
+    }> = []
 
     if (b.tieneRouter && b.equipo_router_id) {
       inserts.push({
@@ -49,7 +55,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true })
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || 'Error inesperado' }, { status: 500 })
+  } catch (e: unknown) {
+    return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Error inesperado' }, { status: 500 })
   }
 }

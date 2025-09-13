@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Validar variables de entorno con fallbacks para debugging
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://eejaqsqhsnljydylcuey.supabase.co';
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlamFxc3Foc25sanlkeWxjdWV5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTc3ODUwNjEsImV4cCI6MjA3MzM2MTA2MX0.-C00cUJcgrXsYw_LMrjUrEB-y9vTH1ulEytUgRx0j6k';
+// Validar variables de entorno - SIN FALLBACKS por seguridad
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || supabaseUrl === 'undefined') {
   console.error('❌ NEXT_PUBLIC_SUPABASE_URL no está configurada');
@@ -27,4 +27,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     autoRefreshToken: true,
     detectSessionInUrl: true
   }
-})
+});
+
+// DEBUG: Probar conexión básica
+console.log('🔍 Probando conexión con Supabase...');
+(async () => {
+  try {
+    const result = await supabase.from('zonas').select('count').single();
+    if (result.error) {
+      console.error('❌ Error de conexión:', result.error);
+    } else {
+      console.log('✅ Conexión exitosa con Supabase');
+    }
+  } catch (err) {
+    console.error('❌ Failed to fetch - Error de red:', err);
+  }
+})();

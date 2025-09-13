@@ -98,7 +98,7 @@ export async function PUT(req: Request) {
       return NextResponse.json({ error: "ID de usuario requerido" }, { status: 400 });
     }
 
-    const updates: any = { updated_at: new Date().toISOString() };
+    const updates: { updated_at: string; role?: string; active?: boolean } = { updated_at: new Date().toISOString() };
     
     if (role !== undefined) {
       const validRoles = ['owner', 'admin', 'tech', 'envios', 'viewer'];

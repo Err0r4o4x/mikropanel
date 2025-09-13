@@ -486,7 +486,7 @@ export default function EnviosPage() {
 }
 
 /* ====== UI helpers ====== */
-function Section({ title, empty, children }: { title: string; empty: string; children: any }) {
+function Section({ title, empty, children }: { title: string; empty: string; children: React.ReactNode }) {
   const has = Array.isArray(children) ? children.length > 0 : Boolean(children);
   return (
     <section className="space-y-2">
