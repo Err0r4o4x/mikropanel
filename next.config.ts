@@ -3,8 +3,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: { unoptimized: true },
-  eslint: { ignoreDuringBuilds: true },    // temporal, para publicar YA
-  typescript: { ignoreBuildErrors: true }, // temporal, para publicar YA
+  // Configuración para producción - sin ignorar errores
 };
 
 export default nextConfig;

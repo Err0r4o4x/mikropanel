@@ -173,17 +173,16 @@ export default function InventarioPage() {
   // Roles / permisos
   const [isAdmin, setIsAdmin] = useState(false);
   const [role, setRole] = useState<ReturnType<typeof getRole>>("");
-  const canCreateUsuario = role !== "envios"; // envios NO puede crear usuarios
+  // const canCreateUsuario = role !== "envios"; // envios NO puede crear usuarios (no usado)
   useEffect(() => {
     const update = () => {
       setIsAdmin(isAdminUser(getCurrentUser()));
       setRole(getRole());
-      // justo después de setRole(getRole());
-      const canNewEquipo     = PERM.newEquipo(role);          // solo admin
-      const canRegistrarMov  = PERM.registrarMov(role);       // admin | tech | envios
-      const canDeleteEquipo  = PERM.deleteEquipo(role);       // solo admin
-      const canDeleteMov     = role === "admin";              // borrar movimientos = solo admin
-      // (estas constantes locales solo reafirman permisos; no se usan aquí)
+      // Permisos calculados pero no usados en este scope
+      // const canNewEquipo     = PERM.newEquipo(role);          // solo admin
+      // const canRegistrarMov  = PERM.registrarMov(role);       // admin | tech | envios
+      // const canDeleteEquipo  = PERM.deleteEquipo(role);       // solo admin
+      // const canDeleteMov     = role === "admin";              // borrar movimientos = solo admin
     };
     update();
     const onStorage = (e: StorageEvent) => {
@@ -191,7 +190,7 @@ export default function InventarioPage() {
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [role]);
 
   const canNewEquipo = PERM.newEquipo(role);
   const canRegistrarMov = PERM.registrarMov(role);
@@ -217,8 +216,9 @@ export default function InventarioPage() {
       if (rawC) {
         const list = JSON.parse(rawC);
         const activos = Array.isArray(list)
-          ? (list as unknown[]).map((c) => c as any).filter((c) => c?.activo)
-              .map((c) => ({ id: c.id as string, nombre: c.nombre as string, zona: c.zona as string, activo: true }))
+          ? (list as { id: string; nombre: string; zona: string; activo: boolean }[])
+              .filter((c) => c?.activo)
+              .map((c) => ({ id: c.id, nombre: c.nombre, zona: c.zona, activo: true }))
           : [];
         setClientes(activos);
       }
@@ -545,7 +545,7 @@ export default function InventarioPage() {
       localStorage.setItem(LS_MOVS, JSON.stringify(nextMovs));
       // Además borra cualquier ajuste manual enlazado a movId (compatibilidad)
       const raw = localStorage.getItem(LS_AJUSTES_COBROS);
-      const list: any[] = raw ? JSON.parse(raw) : [];
+      const list: AjusteCobro[] = raw ? JSON.parse(raw) : [];
       const filtered = Array.isArray(list) ? list.filter((a) => a?.ref?.movId !== m.id) : [];
       localStorage.setItem(LS_AJUSTES_COBROS, JSON.stringify(filtered));
       localStorage.setItem(TOUCH_MOVS, String(Date.now()));
@@ -717,7 +717,7 @@ export default function InventarioPage() {
               <div className="text-[11px] text-slate-500 mb-1">Tipo</div>
               <select
                 value={fTipo}
-                onChange={(e)=>setFTipo(e.target.value as any)}
+                onChange={(e)=>setFTipo(e.target.value as "" | "venta" | "asignacion")}
                 className="w-full border rounded px-2 py-1.5 text-sm bg-white"
               >
                 <option value="">Todos</option>
@@ -740,7 +740,7 @@ export default function InventarioPage() {
               <div className="text-[11px] text-slate-500 mb-1">Pagado (solo Router)</div>
               <select
                 value={fPagado}
-                onChange={(e)=>setFPagado(e.target.value as any)}
+                onChange={(e)=>setFPagado(e.target.value as "" | "si" | "no")}
                 className="w-full border rounded px-2 py-1.5 text-sm bg-white"
               >
                 <option value="">Todos</option>

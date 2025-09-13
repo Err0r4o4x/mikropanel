@@ -62,11 +62,11 @@ function shouldShowCobranzaForNonAdmin(): boolean {
     if (!lote.length) {
       const rawC = localStorage.getItem(LS_CLIENTES);
       const cs = rawC ? JSON.parse(rawC) : [];
-      return Array.isArray(cs) && cs.some((c: any) => c?.activo);
+      return Array.isArray(cs) && cs.some((c: { activo?: boolean }) => c?.activo);
     }
 
     // Mantener visible mientras falten pagos
-    return !lote.every((x: any) => x?.pagado === true);
+    return !lote.every((x: { pagado?: boolean }) => x?.pagado === true);
   } catch {
     return false;
   }
@@ -134,7 +134,7 @@ export default function Sidebar() {
       try {
         const raw = localStorage.getItem(LS_ENVIOS);
         const list = raw ? JSON.parse(raw) : [];
-        const pending = Array.isArray(list) && list.some((e: any) => e?.status !== "recogido");
+        const pending = Array.isArray(list) && list.some((e: { status?: string }) => e?.status !== "recogido");
         setHasPendingEnvios(Boolean(pending));
       } catch {
         setHasPendingEnvios(false);
@@ -170,7 +170,7 @@ export default function Sidebar() {
     ...(isAdmin ? [{ href: "/cobros", label: "Cobros", icon: Wallet }] : []),
 
     { href: "/gastos", label: "Gastos", icon: Receipt },
-  ] as { href: string; label: string; icon: any }[];
+  ] as { href: string; label: string; icon: React.ComponentType<{ className?: string }> }[];
 
   return (
     <aside className="w-64 shrink-0 h-screen sticky top-0 border-r bg-white">

@@ -481,7 +481,7 @@ export default function UsuariosPage() {
     try {
       const raw = localStorage.getItem(LS_CLIENTES);
       const list = raw ? JSON.parse(raw) : [];
-      const next = Array.isArray(list) ? list.filter((x: any) => x?.id !== id) : [];
+      const next = Array.isArray(list) ? list.filter((x: { id?: string }) => x?.id !== id) : [];
       localStorage.setItem(LS_CLIENTES, JSON.stringify(next));
     } catch {}
   }
@@ -490,7 +490,7 @@ export default function UsuariosPage() {
     try {
       // 1) Leemos clientes activos
       const rawC = localStorage.getItem(LS_CLIENTES);
-      const clientes: any[] = rawC ? JSON.parse(rawC) : [];
+      const clientes: Array<{ id?: string; activo?: boolean; zona?: string; servicio?: number; nombre?: string }> = rawC ? JSON.parse(rawC) : [];
       const activos = Array.isArray(clientes) ? clientes.filter(c => c?.activo) : [];
 
       // 2) Leemos tarifas por zona
@@ -629,7 +629,7 @@ export default function UsuariosPage() {
   function eliminarZona(id: ZonaId) {
     if (!isAdmin) return;
     const stats = resumenZona[id] ?? { total: 0 };
-    if ((stats as any).total > 0) {
+    if ((stats as { total: number }).total > 0) {
       alert("No puedes eliminar la red: aún tiene clientes.");
       return;
     }
@@ -637,7 +637,7 @@ export default function UsuariosPage() {
 
     setZonas((prev) => prev.filter((z) => z.id !== id));
     setTarifas((prev) => {
-      const { [id]: _omit, ...rest } = prev;
+      const { [id]: _deleted, ...rest } = prev;
       return rest;
     });
     if (selectedZona === id) setSelectedZona(null);

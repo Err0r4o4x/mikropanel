@@ -259,7 +259,7 @@ const grupos = useMemo<Grupo[]>(() => {
 
       // Agregar nuevas unidades
       const now = new Date().toISOString();
-      for (const { key, display, add, price } of toAdd) {
+      for (const { display, add, price } of toAdd) {
         for (let i = 0; i < add; i++) {
           next.unshift({
             id: crypto.randomUUID(),

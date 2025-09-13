@@ -1,32 +1,38 @@
 "use client";
 
 import { useEffect, useState } from 'react';
-import { migrateAndActivate } from '@/lib/storage-override';
+import { supabase } from '@/lib/supabase/client';
 
-// Componente que inicializa Supabase Storage automáticamente
+// Componente que verifica la conexión con Supabase
 export default function SupabaseStorageProvider({ children }: { children: React.ReactNode }) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function initializeStorage() {
+    async function checkConnection() {
       try {
-        // Variables de entorno correctas - Reactivando Supabase Storage
-        console.log('🚀 Iniciando migración a Supabase Storage...');
-        await migrateAndActivate();
+        console.log('🚀 Verificando conexión con Supabase...');
+        
+        // Verificar conexión básica
+        const { error } = await supabase.from('zonas').select('count').limit(1);
+        
+        if (error) {
+          throw error;
+        }
+        
         setIsInitialized(true);
-        console.log('✅ Supabase Storage activado correctamente');
+        console.log('✅ Conexión con Supabase establecida');
       } catch (err) {
-        console.error('Error inicializando Supabase Storage:', err);
+        console.error('Error conectando con Supabase:', err);
         setError('Error conectando con la base de datos');
-        setIsInitialized(true);
+        setIsInitialized(true); // Continuar aunque haya error
       }
     }
 
-    initializeStorage();
+    checkConnection();
   }, []);
 
-  // Mostrar loading mientras se inicializa
+  // Mostrar loading mientras se verifica la conexión
   if (!isInitialized) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">

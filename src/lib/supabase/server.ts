@@ -1,8 +1,8 @@
 import { createClient } from '@supabase/supabase-js'
 
-// Validar variables de entorno con fallbacks para debugging
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://eejaqsqhsnljydylcuey.supabase.co';
-const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVlamFxc3Foc25sanlkeWxjdWV5Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Nzc4NTA2MSwiZXhwIjoyMDczMzYxMDYxfQ.7zSD3UHMjPiNGaxdn0e8op50QEvASkvYA7en8aUrDc8';
+// Validar variables de entorno - SIN FALLBACKS por seguridad
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE;
 
 if (!supabaseUrl || supabaseUrl === 'undefined') {
   console.error('❌ NEXT_PUBLIC_SUPABASE_URL no está configurada');

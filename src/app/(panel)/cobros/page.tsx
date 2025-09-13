@@ -159,7 +159,14 @@ export default function CobrosPage() {
     try {
       const raw = localStorage.getItem(LS_COBROS_CORTES);
       if (raw) {
-        const list: any[] = JSON.parse(raw);
+        const list: Array<{
+          ym: string;
+          ingreso: number;
+          tecnicos?: number;
+          tecnicosUSD?: number;
+          neto: number;
+          createdISO?: string;
+        }> = JSON.parse(raw);
         const norm: Corte[] = Array.isArray(list)
           ? list.map((c) => ({
               ym: String(c.ym),
@@ -243,7 +250,7 @@ export default function CobrosPage() {
     return { ajustesMesItems: items, ajustesMesTotal: total };
   }, [ajustes, mkNow]);
 
-  const { ingresoBruto, margenBruto, tecnicosActual, netoActual, activosCount } = useMemo(() => {
+  const { ingresoBruto, tecnicosActual, netoActual, activosCount } = useMemo(() => {
     const activos = clientes.filter((c) => c.activo);
 
     const ingreso = activos.reduce((acc, c) => {
@@ -264,7 +271,6 @@ export default function CobrosPage() {
 
     return {
       ingresoBruto: round2(ingreso),
-      margenBruto: round2(margen),
       tecnicosActual: round2(tecnicos),
       netoActual: round2(neto),
       activosCount: activos.length,
@@ -437,7 +443,7 @@ export default function CobrosPage() {
         localStorage.setItem(resetFlagKey, "1");
       } catch {}
     }
-  }, [ingresoBruto, tecnicosActual, netoActual]);
+  }, [ingresoBruto, tecnicosActual, netoActual, setPendingForMonth]);
 
   /* ===== Guardar corte manual ===== */
   const guardarCorteMesActual = () => {
