@@ -6,9 +6,9 @@ export default function EnvDiagnostic() {
   return null;
 
   const envVars = {
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ? 
-      `${process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY.substring(0, 10)}...` : 'NO DEFINIDA',
+    SUPABASE_URL: process.env.SUPABASE_URL,
+    SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY ? 
+      `${process.env.SUPABASE_ANON_KEY.substring(0, 10)}...` : 'NO DEFINIDA',
     NODE_ENV: process.env.NODE_ENV,
   };
 
