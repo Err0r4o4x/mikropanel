@@ -1,5 +1,4 @@
 import { NextResponse } from 'next/server'
-import { supabaseAdmin } from '@/lib/supabase/server'
 
 type Body = {
   equipo_id: string
@@ -12,6 +11,9 @@ type Body = {
 
 export async function POST(req: Request) {
   try {
+    // Importación lazy para evitar problemas en build time
+    const { supabaseAdmin } = await import('@/lib/supabase/server')
+    
     const data = (await req.json()) as Body
 
     if (!data.equipo_id || !data.tipo) {
