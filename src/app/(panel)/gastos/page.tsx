@@ -17,7 +17,6 @@ import {
 } from "recharts";
 
 /* ===== LS keys ===== */
-const LS_GASTOS = "app_gastos";
 const LS_AJUSTES = "app_cobros_ajustes";
 
 /* ===== Helpers ===== */

@@ -6,23 +6,8 @@ import { getCurrentUser, isAdminUser } from "@/lib/admin";
 import { useClientes, useZonas } from "@/hooks/useSupabaseData";
 import { useTarifas } from "@/hooks/useTarifas";
 
-const LS_ZONAS = "app_zonas";
-const LS_TARIFAS = "app_tarifas";
-const LS_CLIENTES = "app_clientes";
 
 type ZonaId = string;
-type Zona = { id: ZonaId; nombre: string };
-type Cliente = {
-  id: string;
-  nombre: string;
-  ip: string;
-  mac: string;
-  servicio: number; // Mb
-  router: boolean;
-  switch: boolean;
-  zona: ZonaId;
-  activo: boolean;
-};
 
 const TARGET_MB = 170;
 const FIXED_COST = 130;
@@ -52,18 +37,6 @@ export default function DashboardPage() {
 
   // Los datos se cargan automáticamente con hooks de Supabase
 
-  // Mostrar pantalla de carga
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando dashboard...</p>
-        </div>
-      </div>
-    );
-  }
-
   const {
     totalMbActivos,
     totalUsuariosActivos,
@@ -74,6 +47,19 @@ export default function DashboardPage() {
     reporteNeto,
     sobranteTecnicos,
   } = useMemo(() => {
+    // Si está cargando, devolver valores por defecto
+    if (isLoading) {
+      return {
+        totalMbActivos: 0,
+        totalUsuariosActivos: 0,
+        zonasDetalladas: [],
+        totalIngreso: 0,
+        progreso: 0,
+        margenBruto: 0,
+        reporteNeto: 0,
+        sobranteTecnicos: 0,
+      };
+    }
     const activos = clientes.filter((c) => c.activo);
 
     const byZonaMb = new Map<ZonaId, number>();
@@ -116,10 +102,22 @@ export default function DashboardPage() {
       reporteNeto: neto,
       sobranteTecnicos: sobrante,
     };
-  }, [zonas, tarifas, clientes]);
+  }, [zonas, tarifas, clientes, isLoading]);
 
   const currency = (n: number) =>
     n.toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 2 });
+
+  // Mostrar pantalla de carga
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">

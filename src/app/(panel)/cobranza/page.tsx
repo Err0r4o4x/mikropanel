@@ -8,9 +8,6 @@ import { useClientes, useZonas } from "@/hooks/useSupabaseData";
 import { useTarifas } from "@/hooks/useTarifas";
 
 /* ===== Storage keys ===== */
-const LS_CLIENTES = "app_clientes";
-const LS_TARIFAS = "app_tarifas";
-const LS_ZONAS = "app_zonas";
 const LS_COBROS_MES = "app_cobros_mes";
 const LS_FORCE_COBRANZA = "app_force_cobranza";
 
@@ -134,7 +131,7 @@ export default function CobranzaPage() {
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, [isLoading, clientes]);
+  }, [isLoading, clientes, tarifas]);
 
   // Agrupar/filtrar
   const filtered = useMemo(() => {

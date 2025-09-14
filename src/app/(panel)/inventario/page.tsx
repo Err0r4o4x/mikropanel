@@ -6,9 +6,7 @@ import { getCurrentUser, isAdminUser, getRole, PERM } from "@/lib/admin";
 import { useClientes, useEquipos, useMovimientos } from "@/hooks/useSupabaseData";
 
 /* ===== LocalStorage keys ===== */
-const LS_EQUIPOS = "app_equipos";
 const LS_MOVS = "app_movimientos";
-const LS_CLIENTES = "app_clientes";
 const LS_AJUSTES_COBROS = "app_cobros_ajustes";
 const TOUCH_MOVS = "__touch_movs";
 
@@ -47,7 +45,6 @@ type Equipo = {
   placeholder?: boolean;
 };
 
-type Cliente = { id: string; nombre: string; zona: string; activo: boolean };
 
 type MovimientoBase = {
   id: string;

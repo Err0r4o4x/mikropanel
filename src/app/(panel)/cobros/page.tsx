@@ -18,8 +18,6 @@ import {
 } from "recharts";
 
 /* ===== LocalStorage keys ===== */
-const LS_TARIFAS = "app_tarifas";
-const LS_CLIENTES = "app_clientes";
 const LS_COBROS_CORTES = "app_cobros_cortes";
 const LS_AJUSTES_COBROS = "app_cobros_ajustes";
 
@@ -85,13 +83,6 @@ const MARGIN_PREMIUM = 5.25;
 /* ===== Tipos ===== */
 type ZonaId = string;
 
-type Cliente = {
-  id: string;
-  nombre: string;
-  zona: ZonaId;
-  servicio: number;
-  activo: boolean;
-};
 
 type Corte = {
   ym: string; // YYYY-MM

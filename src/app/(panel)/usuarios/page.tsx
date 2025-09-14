@@ -1,15 +1,12 @@
 "use client";
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MapPin, Plus, Trash2, Pencil, Search } from "lucide-react";
 import { getCurrentUser, isAdminUser, getRole  } from "@/lib/admin";
 import { useClientes, useZonas } from "@/hooks/useSupabaseData";
 import { useTarifas } from "@/hooks/useTarifas";
 
 /* ===== LocalStorage keys ===== */
-const LS_ZONAS = "app_zonas";
-const LS_TARIFAS = "app_tarifas";
-const LS_CLIENTES = "app_clientes";
 
 /* ===== Inventario / Movs / Cobros keys ===== */
 const LS_EQUIPOS = "app_equipos";
@@ -76,12 +73,6 @@ type MovimientoVenta = MovimientoBase & { tipo: "venta" };
 type Movimiento = MovimientoAsignacion | MovimientoVenta;
 
 /* ===== Datos base ===== */
-const ZONAS_BASE: Zona[] = [
-  { id: "carvajal", nombre: "Carvajal" },
-  { id: "santos-suarez", nombre: "Santos Suarez" },
-  { id: "san-francisco", nombre: "San Francisco" },
-  { id: "buenos-aires", nombre: "Buenos Aires" },
-];
 
 const TARIFA_BASE: Record<ZonaId, number> = {
   carvajal: 5,
@@ -445,14 +436,10 @@ export default function UsuariosPage() {
 
   function toggleForceCobranza() {
     try {
-      // 1) Leemos clientes activos
-      const rawC = localStorage.getItem(LS_CLIENTES);
-      const clientes: Array<{ id?: string; activo?: boolean; zona?: string; servicio?: number; nombre?: string }> = rawC ? JSON.parse(rawC) : [];
+      // 1) Usamos clientes activos de Supabase
       const activos = Array.isArray(clientes) ? clientes.filter(c => c?.activo) : [];
 
-      // 2) Leemos tarifas por zona
-      const rawT = localStorage.getItem(LS_TARIFAS);
-      const tarifas: Record<string, number> = rawT ? JSON.parse(rawT) : {};
+      // 2) Usamos tarifas de Supabase
 
       // 3) Construimos el lote del mes YYYY-MM
       const yyyymm = monthKey();
