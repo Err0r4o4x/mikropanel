@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser, isAdminUser } from "@/lib/admin";
 import {
@@ -317,7 +317,7 @@ export default function CobrosPage() {
   }
 
   // Setear "Listo para enviar" para un mes (se usa al guardar corte)
-  function setPendingForMonth(ym: string, total: number) {
+  const setPendingForMonth = useCallback((ym: string, total: number) => {
     const nowISO = new Date().toISOString();
     const current = envState[ym];
     const next: EnviosState = {
@@ -334,7 +334,7 @@ export default function CobrosPage() {
     // Limpia movimientos previos del mismo mes (nuevo periodo)
     const filteredMovs = envMovs.filter((m) => m.yyyymm !== ym);
     saveEnvMovs(filteredMovs);
-  }
+  }, [envState, envMovs]);
 
   // Registrar un envío parcial
   function registrarEnvioParcial() {

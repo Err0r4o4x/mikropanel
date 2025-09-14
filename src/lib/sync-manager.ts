@@ -92,7 +92,7 @@ export async function syncFromSupabase(localStorageKey: string): Promise<boolean
     const updatedData = [...currentData];
     
     for (const newItem of data) {
-      const existingIndex = updatedData.findIndex(item => item.id === newItem.id);
+      const existingIndex = updatedData.findIndex((item: { id?: string }) => item.id === newItem.id);
       if (existingIndex >= 0) {
         updatedData[existingIndex] = newItem;
       } else {
@@ -122,7 +122,7 @@ export async function syncFromSupabase(localStorageKey: string): Promise<boolean
 }
 
 // Guardar datos en Supabase cuando se actualiza localStorage
-export async function syncToSupabase(localStorageKey: string, data: any[]): Promise<boolean> {
+export async function syncToSupabase(localStorageKey: string, data: Record<string, unknown>[]): Promise<boolean> {
   try {
     const table = TABLE_MAPPING[localStorageKey];
     if (!table) {
@@ -193,7 +193,6 @@ export function startPeriodicSync(): () => void {
 // Hook personalizado para usar en componentes
 export function useSyncedData<T>(localStorageKey: string, defaultValue: T[] = []): [T[], (data: T[]) => void] {
   const [data, setData] = React.useState<T[]>(defaultValue);
-  const [isLoaded, setIsLoaded] = React.useState(false);
 
   // Cargar datos iniciales
   React.useEffect(() => {
@@ -211,7 +210,6 @@ export function useSyncedData<T>(localStorageKey: string, defaultValue: T[] = []
 
       // Luego sincronizar desde Supabase
       await syncFromSupabase(localStorageKey);
-      setIsLoaded(true);
     };
 
     loadData();
@@ -240,7 +238,7 @@ export function useSyncedData<T>(localStorageKey: string, defaultValue: T[] = []
     localStorage.setItem(localStorageKey, JSON.stringify(newData));
     
     // Sincronizar con Supabase en background
-    syncToSupabase(localStorageKey, newData);
+    syncToSupabase(localStorageKey, newData as Record<string, unknown>[]);
   }, [localStorageKey]);
 
   return [data, updateData];
