@@ -19,10 +19,13 @@ type Equipo = {
   id: string;
   etiqueta: string;       // nombre del equipo (agrupa)
   categoria?: string;
-  precioUSD?: number;
-  estado: EstadoEquipo;
-  creadoISO: string;
+  precio_usd?: number;
+  estado_tipo: string;
+  estado_fecha?: string;
+  estado_cliente_id?: string;
+  estado_cliente_nombre?: string;
   placeholder?: boolean;  // marcador cuando cantidad=0
+  created_at: string;
 };
 
 
@@ -134,25 +137,25 @@ const grupos = useMemo<Grupo[]>(() => {
     const key = e.etiqueta.trim().toLowerCase();
     const display = e.etiqueta.trim();
     if (!map.has(key)) {
-      map.set(key, { key, display, cantidad: 0, asignadas: 0, precioUSD: e.precioUSD });
+      map.set(key, { key, display, cantidad: 0, asignadas: 0, precioUSD: e.precio_usd });
     }
     const g = map.get(key)!;
 
     // el marcador no suma cantidad
     if (e.placeholder) {
-      if (g.precioUSD == null && e.precioUSD != null) g.precioUSD = e.precioUSD;
+      if (g.precioUSD == null && e.precio_usd != null) g.precioUSD = e.precio_usd;
       continue;
     }
 
     // SOLO contamos disponibles como stock
-    if (e.estado.tipo === "disponible") g.cantidad += 1;
+    if (e.estado_tipo === "disponible") g.cantidad += 1;
 
     // contamos asignadas por separado (solo informativo)
-    if (e.estado.tipo === "asignado") g.asignadas += 1;
+    if (e.estado_tipo === "asignado") g.asignadas += 1;
 
     // guarda último precio conocido en no vendidas
-    if (e.estado.tipo !== "vendido" && typeof e.precioUSD === "number") {
-      g.precioUSD = e.precioUSD;
+    if (e.estado_tipo !== "vendido" && typeof e.precio_usd === "number") {
+      g.precioUSD = e.precio_usd;
     }
   }
   return Array.from(map.values()).sort((a, b) => a.display.localeCompare(b.display));
@@ -232,7 +235,7 @@ const grupos = useMemo<Grupo[]>(() => {
           if (
             remaining > 0 &&
             e.etiqueta.trim().toLowerCase() === key &&
-            e.estado.tipo === "disponible" &&
+            e.estado_tipo === "disponible" &&
             !e.placeholder
           ) {
             remaining -= 1;
@@ -250,9 +253,9 @@ const grupos = useMemo<Grupo[]>(() => {
             id: crypto.randomUUID(),
             etiqueta: display,
             categoria: "general",
-            precioUSD: price,
-            estado: { tipo: "disponible" },
-            creadoISO: now,
+            precio_usd: price,
+            estado_tipo: "disponible",
+            created_at: now,
           });
         }
       }
@@ -262,7 +265,7 @@ const grupos = useMemo<Grupo[]>(() => {
         const k = e.etiqueta.trim().toLowerCase();
         const p = priceMap.get(k);
         if (p === undefined) return e; // campo vacío: no tocar
-        if (e.estado.tipo !== "vendido" && !e.placeholder) return { ...e, precioUSD: p };
+        if (e.estado_tipo !== "vendido" && !e.placeholder) return { ...e, precio_usd: p };
         return e;
       });
 
@@ -273,7 +276,7 @@ const grupos = useMemo<Grupo[]>(() => {
         if (desired !== 0) continue;
 
         const hasNonSold = next.some(
-          (e) => e.etiqueta.trim().toLowerCase() === key && e.estado.tipo !== "vendido" && !e.placeholder
+          (e) => e.etiqueta.trim().toLowerCase() === key && e.estado_tipo !== "vendido" && !e.placeholder
         );
         const hasPlaceholder = next.some((e) => e.etiqueta.trim().toLowerCase() === key && e.placeholder);
 
@@ -282,9 +285,9 @@ const grupos = useMemo<Grupo[]>(() => {
             id: crypto.randomUUID(),
             etiqueta: r.display,
             categoria: "general",
-            precioUSD: priceMap.get(key),
-            estado: { tipo: "disponible" }, // el estado visible se deriva por cantidad 0
-            creadoISO: now,
+            precio_usd: priceMap.get(key),
+            estado_tipo: "disponible", // el estado visible se deriva por cantidad 0
+            created_at: now,
             placeholder: true,
           });
         }
@@ -295,7 +298,7 @@ const grupos = useMemo<Grupo[]>(() => {
           if (p !== undefined) {
             next = next.map((e) => {
               if (e.placeholder && e.etiqueta.trim().toLowerCase() === key) {
-                return { ...e, precioUSD: p };
+                return { ...e, precio_usd: p };
               }
               return e;
             });

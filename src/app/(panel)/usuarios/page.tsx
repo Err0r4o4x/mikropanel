@@ -41,6 +41,7 @@ type Cliente = {
   activo: boolean;
 };
 
+// Tipo legacy - ya no se usa, mantenido para compatibilidad
 type EstadoEquipo =
   | { tipo: "disponible" }
   | { tipo: "vendido"; fechaISO: string }
@@ -49,23 +50,26 @@ type EstadoEquipo =
 type Equipo = {
   id: string;
   etiqueta: string;
-  precioUSD?: number;
-  estado: EstadoEquipo;
-  creadoISO: string;
+  precio_usd?: number;
+  estado_tipo: string;
+  estado_fecha?: string;
+  estado_cliente_id?: string;
+  estado_cliente_nombre?: string;
   placeholder?: boolean;
+  created_at: string;
 };
 
 type MovimientoBase = {
   id: string;
-  fechaISO: string;
-  equipoId: string;
-  equipoEtiqueta: string;
+  fecha: string;
+  equipo_id: string;
+  equipo_etiqueta: string;
   actor: string;
 };
 type MovimientoAsignacion = MovimientoBase & {
   tipo: "asignacion";
-  clienteId: string;
-  clienteNombre: string;
+  cliente_id: string;
+  cliente_nombre: string;
   pagado?: boolean; // solo router
 };
 type MovimientoVenta = MovimientoBase & { tipo: "venta" };
@@ -223,14 +227,14 @@ export default function UsuariosPage() {
   function hayStock(etiqueta: "router" | "switch") {
     const equipos = readEquipos();
     const target = etiqueta === "router" ? isRouterName : isSwitchName;
-    return equipos.some((e) => target(e.etiqueta) && e.estado.tipo === "disponible" && !e.placeholder);
+    return equipos.some((e) => target(e.etiqueta) && e.estado_tipo === "disponible" && !e.placeholder);
   }
 
   /** Asigna una unidad y crea movimiento (Router: pagado=false SIEMPRE). No crea ajustes aquí. */
   function asignarEquipoACliente(etiqueta: "router" | "switch", cliente: Cliente) {
     const equipos = readEquipos();
     const target = etiqueta === "router" ? isRouterName : isSwitchName;
-    const unit = equipos.find((e) => target(e.etiqueta) && e.estado.tipo === "disponible" && !e.placeholder);
+    const unit = equipos.find((e) => target(e.etiqueta) && e.estado_tipo === "disponible" && !e.placeholder);
     if (!unit) return false;
 
     const nowISO = new Date().toISOString();
@@ -241,12 +245,10 @@ export default function UsuariosPage() {
       e.id === unit.id
         ? {
             ...e,
-            estado: {
-              tipo: "asignado" as const,
-              fechaISO: nowISO,
-              clienteId: cliente.id,
-              clienteNombre: cliente.nombre,
-            },
+            estado_tipo: "asignado",
+            estado_fecha: nowISO,
+            estado_cliente_id: cliente.id,
+            estado_cliente_nombre: cliente.nombre,
           }
         : e
     );
@@ -256,13 +258,13 @@ export default function UsuariosPage() {
     const movId = crypto.randomUUID();
     const mov: MovimientoAsignacion = {
       id: movId,
-      fechaISO: nowISO,
-      equipoId: unit.id,
-      equipoEtiqueta: unit.etiqueta,
+      fecha: nowISO,
+      equipo_id: unit.id,
+      equipo_etiqueta: unit.etiqueta,
       actor,
       tipo: "asignacion",
-      clienteId: cliente.id,
-      clienteNombre: cliente.nombre,
+      cliente_id: cliente.id,
+      cliente_nombre: cliente.nombre,
       pagado: etiqueta === "router" ? false : undefined,
     };
     const movsNext = [mov, ...readMovs()];

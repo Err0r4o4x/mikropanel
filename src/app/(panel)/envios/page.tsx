@@ -17,23 +17,26 @@ type EstadoEquipo =
 type Equipo = {
   id: string;
   etiqueta: string;
-  precioUSD?: number;
-  estado: EstadoEquipo;
-  creadoISO: string;
+  precio_usd?: number;
+  estado_tipo: string;
+  estado_fecha?: string;
+  estado_cliente_id?: string;
+  estado_cliente_nombre?: string;
   placeholder?: boolean;
+  created_at: string;
 };
 
 type EnvioItem = { key: string; display: string; qty: number };
 type Envio = {
   id: string;
-  createdISO: string;
-  createdBy: string;
+  created_iso: string;
+  created_by: string;
   items: EnvioItem[];
   status: "en_camino" | "disponible" | "recogido";
-  arrivedISO?: string;
-  pickedISO?: string;
-  pickedBy?: string;
-  inventoryAdded?: boolean; // evita doble-suma
+  arrived_iso?: string;
+  picked_iso?: string;
+  picked_by?: string;
+  inventory_added?: boolean; // evita doble-suma
 };
 
 /* ===== Helpers ===== */
@@ -65,8 +68,8 @@ const addToInventory = async (items: EnvioItem[], equiposList: Equipo[], setEqui
         next.unshift({
           id: crypto.randomUUID(),
           etiqueta: it.display,
-          estado: { tipo: "disponible" },
-          creadoISO: now,
+          estado_tipo: "disponible",
+          created_at: now,
         });
       }
     }
@@ -87,7 +90,7 @@ const subtractFromInventory = async (items: EnvioItem[], equiposList: Equipo[], 
   try {
     const disponiblesPorKey = new Map<string, number>();
     for (const e of equiposList) {
-      if (e.estado.tipo !== "disponible" || e.placeholder) continue;
+      if (e.estado_tipo !== "disponible" || e.placeholder) continue;
       const k = e.etiqueta.trim().toLowerCase();
       disponiblesPorKey.set(k, (disponiblesPorKey.get(k) || 0) + 1);
     }
@@ -104,7 +107,7 @@ const subtractFromInventory = async (items: EnvioItem[], equiposList: Equipo[], 
     for (const e of equiposList) {
       const k = e.etiqueta.trim().toLowerCase();
       const need = remainingByKey.get(k) || 0;
-      if (need > 0 && e.estado.tipo === "disponible" && !e.placeholder) {
+      if (need > 0 && e.estado_tipo === "disponible" && !e.placeholder) {
         remainingByKey.set(k, need - 1);
         continue;
       }
@@ -183,11 +186,11 @@ export default function EnviosPage() {
     const u = getCurrentUser();
     const nuevo: Envio = {
       id: crypto.randomUUID(),
-      createdISO: nowISO(),
-      createdBy: (u?.username || "admin").toString(),
+      created_iso: nowISO(),
+      created_by: (u?.username || "admin").toString(),
       items: toSend,
       status: "en_camino",
-      inventoryAdded: false,
+      inventory_added: false,
     };
     const next = [nuevo, ...envios] as Envio[];
     setEnvios(next);
@@ -270,7 +273,7 @@ export default function EnviosPage() {
     if (!canDisponible) return;
     setEnvios(prev => {
       const next: Envio[] = prev.map(e =>
-        e.id === id ? ({ ...e, status: "disponible", arrivedISO: nowISO() } as Envio) : e
+        e.id === id ? ({ ...e, status: "disponible", arrived_iso: nowISO() } as Envio) : e
       );
       localStorage.setItem(LS_ENVIOS, JSON.stringify(next));
       window.dispatchEvent(new StorageEvent("storage", { key: LS_ENVIOS, newValue: JSON.stringify(next) }));
@@ -289,17 +292,17 @@ export default function EnviosPage() {
       if (idx < 0) return;
 
       const env = list[idx];
-      if (env.status === "recogido" && env.inventoryAdded) return;
+      if (env.status === "recogido" && env.inventory_added) return;
 
       const u = getCurrentUser();
-      const alreadyAdded = Boolean(env.inventoryAdded);
+      const alreadyAdded = Boolean(env.inventory_added);
 
       const updated: Envio = {
         ...env,
         status: "recogido",
-        pickedISO: nowISO(),
-        pickedBy: (u?.username || "tech").toString(),
-        inventoryAdded: true,
+        picked_iso: nowISO(),
+        picked_by: (u?.username || "tech").toString(),
+        inventory_added: true,
       };
       const next: Envio[] = list.slice();
       next[idx] = updated;
@@ -526,7 +529,7 @@ function EnvioCard({
             }`}
           />
           <div className="font-medium">
-            {new Date(e.createdISO).toLocaleString()} · {totalUnidades} unidad{totalUnidades === 1 ? "" : "es"}
+            {new Date(e.created_iso).toLocaleString()} · {totalUnidades} unidad{totalUnidades === 1 ? "" : "es"}
           </div>
         </div>
         {/* Antes ocultábamos children si compact. Ahora SIEMPRE los mostramos. */}
