@@ -3,7 +3,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapPin, Plus, Trash2, Pencil, Search } from "lucide-react";
 import { getCurrentUser, isAdminUser, getRole  } from "@/lib/admin";
-import { useSyncedData } from "@/hooks/useSyncedData";
+import { useClientes, useZonas } from "@/hooks/useSupabaseData";
+import { useTarifas } from "@/hooks/useTarifas";
 
 /* ===== LocalStorage keys ===== */
 const LS_ZONAS = "app_zonas";
@@ -111,24 +112,15 @@ const isSwitchName = (s?: string) => (s ?? "").trim().toLowerCase() === "switch"
 
 /* ===== Página ===== */
 export default function UsuariosPage() {
-  // datos sincronizados
+  // datos directos de Supabase
   const [selectedZona, setSelectedZona] = useState<ZonaId | null>(null);
-  const [zonas, setZonas, zonasLoaded] = useSyncedData<Zona>(LS_ZONAS, ZONAS_BASE);
-  const [tarifasArray, setTarifasArray, tarifasLoaded] = useSyncedData<Record<ZonaId, number>>(LS_TARIFAS, [TARIFA_BASE]);
-  
-  // Convertir array a objeto para compatibilidad
-  const tarifas = useMemo(() => {
-    return Array.isArray(tarifasArray) && tarifasArray.length > 0 ? tarifasArray[0] : TARIFA_BASE;
-  }, [tarifasArray]);
-  const [clientes, setClientes, clientesLoaded] = useSyncedData<Cliente>(LS_CLIENTES, []);
+  const [zonas, setZonas, zonasLoading, zonasError] = useZonas();
+  const [tarifas, setTarifas, tarifasLoading, tarifasError] = useTarifas(TARIFA_BASE);
+  const [clientes, setClientes, clientesLoading, clientesError] = useClientes();
   
   // Estado de carga combinado
-  const loaded = zonasLoaded && tarifasLoaded && clientesLoaded;
-  
-  // Helper para actualizar tarifas
-  const setTarifas = useCallback(async (newTarifas: Record<ZonaId, number>) => {
-    await setTarifasArray([newTarifas]);
-  }, [setTarifasArray]);
+  const loaded = !zonasLoading && !tarifasLoading && !clientesLoading;
+  const loadingError = zonasError || tarifasError || clientesError;
 
   // rol
   const [isAdmin, setIsAdmin] = useState(false);
@@ -208,7 +200,7 @@ export default function UsuariosPage() {
     activo: true,
   });
 
-  // Los datos se cargan y guardan automáticamente con useSyncedData
+  // Los datos se cargan y guardan automáticamente con hooks de Supabase
 
   /* ===== Helpers Inventario/Cobros ===== */
   function readEquipos(): Equipo[] {
@@ -668,13 +660,25 @@ export default function UsuariosPage() {
 
   /* ===== UI ===== */
   
-  // Mostrar pantalla de carga mientras se sincronizan los datos
+  // Mostrar pantalla de carga o error
   if (!loaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Sincronizando datos...</p>
+          {loadingError ? (
+            <>
+              <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-white text-sm">!</span>
+              </div>
+              <p className="text-red-600 mb-2">Error cargando datos</p>
+              <p className="text-gray-600 text-sm">{loadingError}</p>
+            </>
+          ) : (
+            <>
+              <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-600">Cargando datos desde la base de datos...</p>
+            </>
+          )}
         </div>
       </div>
     );

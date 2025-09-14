@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { Activity, DollarSign, Users, MapPin, PiggyBank, Wrench } from "lucide-react";
 import { getCurrentUser, isAdminUser } from "@/lib/admin";
+import { useClientes, useZonas } from "@/hooks/useSupabaseData";
+import { useTarifas } from "@/hooks/useTarifas";
 
 const LS_ZONAS = "app_zonas";
 const LS_TARIFAS = "app_tarifas";
@@ -28,10 +30,14 @@ const MARGIN_STD = 3.75;
 const MARGIN_PREMIUM = 5.25;
 
 export default function DashboardPage() {
-  const [zonas, setZonas] = useState<Zona[]>([]);
-  const [tarifas, setTarifas] = useState<Record<ZonaId, number>>({});
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  // Datos directos de Supabase
+  const [zonas, , zonasLoading] = useZonas();
+  const [tarifas, , tarifasLoading] = useTarifas({});
+  const [clientes, , clientesLoading] = useClientes();
   const [isAdmin, setIsAdmin] = useState(false);
+  
+  // Estado de carga combinado
+  const isLoading = zonasLoading || tarifasLoading || clientesLoading;
 
   // ¿Eres admin?
   useEffect(() => {
@@ -44,30 +50,19 @@ export default function DashboardPage() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  // Cargar datos base
-  useEffect(() => {
-    try {
-      const z = localStorage.getItem(LS_ZONAS);
-      if (z) {
-        const parsed = JSON.parse(z);
-        if (Array.isArray(parsed)) setZonas(parsed);
-      }
-    } catch {}
-    try {
-      const t = localStorage.getItem(LS_TARIFAS);
-      if (t) {
-        const parsed = JSON.parse(t);
-        if (parsed && typeof parsed === "object") setTarifas(parsed);
-      }
-    } catch {}
-    try {
-      const c = localStorage.getItem(LS_CLIENTES);
-      if (c) {
-        const parsed = JSON.parse(c);
-        if (Array.isArray(parsed)) setClientes(parsed);
-      }
-    } catch {}
-  }, []);
+  // Los datos se cargan automáticamente con hooks de Supabase
+
+  // Mostrar pantalla de carga
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   const {
     totalMbActivos,

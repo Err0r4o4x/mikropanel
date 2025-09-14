@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser, isAdminUser } from "@/lib/admin";
+import { useZonas } from "@/hooks/useSupabaseData";
+import { useTarifas } from "@/hooks/useTarifas";
 
 /** Claves localStorage */
 const LS_ZONAS = "app_zonas";
@@ -51,26 +53,12 @@ export default function ConfiguracionPage() {
   }, [router]);
 
   /** ===== Tarifas ===== */
-  const [zonas, setZonas] = useState<Zona[]>(ZONAS_BASE);
-  const [tarifas, setTarifas] = useState<Record<string, number>>(TARIFA_BASE);
+  const [zonas, setZonas, zonasLoading] = useZonas();
+  const [tarifas, setTarifas, tarifasLoading] = useTarifas(TARIFA_BASE);
   const [statusTarifas, setStatusTarifas] = useState<string | null>(null);
-
-  useEffect(() => {
-    try {
-      const z = localStorage.getItem(LS_ZONAS);
-      if (z) {
-        const parsed = JSON.parse(z);
-        if (Array.isArray(parsed) && parsed.length) setZonas(parsed);
-      }
-    } catch {}
-    try {
-      const t = localStorage.getItem(LS_TARIFAS);
-      if (t) {
-        const parsed = JSON.parse(t);
-        if (parsed && typeof parsed === "object") setTarifas(parsed);
-      }
-    } catch {}
-  }, []);
+  
+  // Estado de carga combinado
+  const isLoading = zonasLoading || tarifasLoading;
 
   const zonasOrdenadas = useMemo(
     () => zonas.slice().sort((a, b) => a.nombre.localeCompare(b.nombre)),
@@ -85,9 +73,9 @@ export default function ConfiguracionPage() {
     }));
   }
 
-  function guardarTarifas() {
+  async function guardarTarifas() {
     try {
-      localStorage.setItem(LS_TARIFAS, JSON.stringify(tarifas));
+      await setTarifas(tarifas);
       setStatusTarifas("Tarifas guardadas correctamente.");
       setTimeout(() => setStatusTarifas(null), 2000);
     } catch {
@@ -323,6 +311,18 @@ const grupos = useMemo<Grupo[]>(() => {
 
     setStatusInv("Inventario actualizado.");
     setTimeout(() => setStatusInv(null), 2000);
+  }
+
+  // Mostrar pantalla de carga
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando configuración...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
