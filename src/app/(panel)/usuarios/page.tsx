@@ -28,7 +28,6 @@ function round2(n: number) {
 
 /* ===== Tipos ===== */
 type ZonaId = string;
-type Zona = { id: ZonaId; nombre: string };
 
 type Cliente = {
   id: string;

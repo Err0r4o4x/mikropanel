@@ -25,7 +25,6 @@ type Equipo = {
   placeholder?: boolean;  // marcador cuando cantidad=0
 };
 
-type Zona = { id: string; nombre: string };
 
 /** Defaults Zonas/Tarifas */
 
@@ -46,8 +45,14 @@ export default function ConfiguracionPage() {
 
   /** ===== Tarifas ===== */
   const [zonas, , zonasLoading] = useZonas();
-  const [tarifas, setTarifas, tarifasLoading] = useTarifas(TARIFA_BASE);
+  const [tarifasDB, updateTarifasDB, tarifasLoading] = useTarifas(TARIFA_BASE);
+  const [tarifasLocal, setTarifasLocal] = useState<Record<string, number>>({});
   const [statusTarifas, setStatusTarifas] = useState<string | null>(null);
+  
+  // Sincronizar tarifas de DB con estado local
+  useEffect(() => {
+    setTarifasLocal(tarifasDB);
+  }, [tarifasDB]);
   
   // Estado de carga combinado
   const isLoading = zonasLoading || tarifasLoading;
@@ -59,7 +64,7 @@ export default function ConfiguracionPage() {
 
   function setTarifa(id: string, value: string) {
     const n = Number(value);
-    setTarifas((prev) => ({
+    setTarifasLocal(prev => ({
       ...prev,
       [id]: Number.isFinite(n) && n > 0 ? Math.trunc(n) : 0,
     }));
@@ -67,7 +72,7 @@ export default function ConfiguracionPage() {
 
   async function guardarTarifas() {
     try {
-      await setTarifas(tarifas);
+      await updateTarifasDB(tarifasLocal);
       setStatusTarifas("Tarifas guardadas correctamente.");
       setTimeout(() => setStatusTarifas(null), 2000);
     } catch {
@@ -349,8 +354,8 @@ const grupos = useMemo<Grupo[]>(() => {
             <div className="col-span-4 text-right">Tarifa ($/Mb)</div>
           </div>
 
-          {zonasOrdenadas.map((z) => {
-            const valor = tarifas[z.id] ?? 5;
+           {zonasOrdenadas.map((z) => {
+             const valor = tarifasLocal[z.id] ?? 5;
             return (
               <div key={z.id} className="grid grid-cols-12 items-center px-4 py-3 border-b last:border-b-0 border-slate-100">
                 <div className="col-span-8 text-slate-800">{z.nombre}</div>

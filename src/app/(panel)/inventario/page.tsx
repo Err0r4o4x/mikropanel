@@ -295,7 +295,7 @@ export default function InventarioPage() {
     dlgNuevoRef.current?.showModal();
   };
   const closeNuevo = () => dlgNuevoRef.current?.close();
-  const submitNuevo = (e?: React.FormEvent) => {
+  const submitNuevo = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!canNewEquipo) return;
     const name = nuevoNombre.trim();
@@ -309,18 +309,16 @@ export default function InventarioPage() {
       return;
     }
     const now = new Date().toISOString();
-    setEquipos((prev) => {
-      const next = prev.filter((x) => !(x.placeholder && x.etiqueta.trim().toLowerCase() === name.toLowerCase()));
-      next.unshift({
-        id: crypto.randomUUID(),
-        etiqueta: name,
-        precioUSD: price,
-        categoria: "general",
-        estado: { tipo: "disponible" as const },
-        creadoISO: now,
-      });
-      return next;
+    const next = equipos.filter((x) => !(x.placeholder && x.etiqueta.trim().toLowerCase() === name.toLowerCase()));
+    next.unshift({
+      id: crypto.randomUUID(),
+      etiqueta: name,
+      precioUSD: price,
+      categoria: "general",
+      estado: { tipo: "disponible" as const },
+      creadoISO: now,
     });
+    await setEquipos(next);
     closeNuevo();
   };
 
@@ -445,7 +443,7 @@ export default function InventarioPage() {
   };
 
   //* ===== Eliminar grupo (solo admin) ===== */
-  const eliminarGrupo = (g: Grupo) => {
+  const eliminarGrupo = async (g: Grupo) => {
     if (!isAdmin) return;
 
     // Contar cuántos se eliminarían (solo los "disponible" del grupo)
@@ -467,14 +465,13 @@ export default function InventarioPage() {
     );
     if (!ok) return;
 
-    setEquipos((prev) =>
-      prev.filter((e) => {
-        const same = e.etiqueta.trim().toLowerCase() === g.key;
-        if (!same) return true;
-        // Conserva vendidos/asignados; elimina disponibles
-        return e.estado.tipo === "vendido" || e.estado.tipo === "asignado";
-      })
-    );
+    const nextEquipos = equipos.filter((e) => {
+      const same = e.etiqueta.trim().toLowerCase() === g.key;
+      if (!same) return true;
+      // Conserva vendidos/asignados; elimina disponibles
+      return e.estado.tipo === "vendido" || e.estado.tipo === "asignado";
+    });
+    await setEquipos(nextEquipos);
   };
 
 
@@ -487,7 +484,7 @@ export default function InventarioPage() {
     const nextEquipos: Equipo[] = equipos.map((e) =>
       e.id === m.equipoId ? { ...e, estado: { tipo: "disponible" as const } } : e
     );
-    setEquipos(nextEquipos);
+    await setEquipos(nextEquipos);
 
     // Eliminar mov
     const nextMovs: Movimiento[] = movs.filter((x) => x.id !== m.id);

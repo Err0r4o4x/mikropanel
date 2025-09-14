@@ -126,7 +126,7 @@ export default function EnviosPage() {
   const canRecoger     = PERM.recogerEnvio(role);
 
   // Datos directos de Supabase
-  const [equipos, , equiposLoading] = useEquipos();
+  const [equipos, setEquipos, equiposLoading] = useEquipos();
   const [envios, setEnvios] = useState<Envio[]>([]);
   const [grupos, setGrupos] = useState<{ key: string; display: string }[]>([]);
   
@@ -202,7 +202,7 @@ export default function EnviosPage() {
     setEditId(e.id);
     const map = new Map<string, number>();
     for (const it of e.items) map.set(it.key, (map.get(it.key) || 0) + it.qty);
-    const base = readGrupos();
+    const base = readGrupos(equipos);
     setRowsEdit(
       base.map(g => ({
         key: g.key,
@@ -213,7 +213,7 @@ export default function EnviosPage() {
     );
     setOpenEdit(true);
   }
-  function submitEditar(e?: React.FormEvent) {
+  async function submitEditar(e?: React.FormEvent) {
     e?.preventDefault();
     if (!isAdmin) return;
 
@@ -221,45 +221,46 @@ export default function EnviosPage() {
       .filter(r => r.checked && Number(r.qty) > 0)
       .map(r => ({ key: r.key, display: r.display, qty: Math.floor(Number(r.qty)) }));
 
-    setEnvios(prev => {
-      const current = prev.find(x => x.id === editId);
-      if (!current) return prev;
+    const current = envios.find(x => x.id === editId);
+    if (!current) return;
 
-      if (current.status === "recogido") {
-        const mapOld = new Map(current.items.map(i => [i.key, i.qty]));
-        const keys = new Set<string>([...current.items.map(i=>i.key), ...toItems.map(i=>i.key)]);
-        const toAdd: EnvioItem[] = [];
-        const toSub: EnvioItem[] = [];
+    // Manejar cambios de inventario si está recogido
+    if (current.status === "recogido") {
+      const mapOld = new Map(current.items.map(i => [i.key, i.qty]));
+      const keys = new Set<string>([...current.items.map(i=>i.key), ...toItems.map(i=>i.key)]);
+      const toAdd: EnvioItem[] = [];
+      const toSub: EnvioItem[] = [];
 
-        keys.forEach(k => {
-          const oldQ = mapOld.get(k) || 0;
-          const newQ = (toItems.find(i=>i.key===k)?.qty) || 0;
-          const display = (toItems.find(i=>i.key===k)?.display) || (current.items.find(i=>i.key===k)?.display) || k;
-          const diff = newQ - oldQ;
-          if (diff > 0) toAdd.push({ key:k, display, qty: diff });
-          if (diff < 0) toSub.push({ key:k, display, qty: -diff });
-        });
+      keys.forEach(k => {
+        const oldQ = mapOld.get(k) || 0;
+        const newQ = (toItems.find(i=>i.key===k)?.qty) || 0;
+        const display = (toItems.find(i=>i.key===k)?.display) || (current.items.find(i=>i.key===k)?.display) || k;
+        const diff = newQ - oldQ;
+        if (diff > 0) toAdd.push({ key:k, display, qty: diff });
+        if (diff < 0) toSub.push({ key:k, display, qty: -diff });
+      });
 
-        if (toSub.length) {
-          const res = subtractFromInventory(toSub);
-          if (isSubtractFail(res)) {
-            alert(
-              "No hay stock disponible para restar estas cantidades:\n" +
-              res.missing.map(m => `• ${m.display}: ${m.falta}`).join("\n")
-            );
-            return prev;
-          }
+      if (toSub.length) {
+        const res = await subtractFromInventory(toSub, equipos, setEquipos);
+        if (isSubtractFail(res)) {
+          alert(
+            "No hay stock disponible para restar estas cantidades:\n" +
+            res.missing.map(m => `• ${m.display}: ${m.falta}`).join("\n")
+          );
+          return;
         }
-        if (toAdd.length) addToInventory(toAdd);
       }
+      if (toAdd.length) await addToInventory(toAdd, equipos, setEquipos);
+    }
 
-      const next: Envio[] = prev.map(x =>
-        x.id === editId ? ({ ...x, items: toItems } as Envio) : x
-      );
-      localStorage.setItem(LS_ENVIOS, JSON.stringify(next));
-      window.dispatchEvent(new StorageEvent("storage", { key: LS_ENVIOS, newValue: JSON.stringify(next) }));
-      return next;
-    });
+    // Actualizar el envío
+    const next: Envio[] = envios.map(x =>
+      x.id === editId ? ({ ...x, items: toItems } as Envio) : x
+    );
+    
+    localStorage.setItem(LS_ENVIOS, JSON.stringify(next));
+    window.dispatchEvent(new StorageEvent("storage", { key: LS_ENVIOS, newValue: JSON.stringify(next) }));
+    setEnvios(next);
 
     setOpenEdit(false);
   }
@@ -278,7 +279,7 @@ export default function EnviosPage() {
   };
 
   // Evita doble suma, incluso con 2 pestañas
-  const marcarRecogido = (id: string) => {
+  const marcarRecogido = async (id: string) => {
     if (!canRecoger) return;
 
     try {
@@ -307,19 +308,19 @@ export default function EnviosPage() {
       window.dispatchEvent(new StorageEvent("storage", { key: LS_ENVIOS, newValue: JSON.stringify(next) }));
       setEnvios(next);
 
-      if (!alreadyAdded) addToInventory(env.items);
+      if (!alreadyAdded) await addToInventory(env.items, equipos, setEquipos);
     } catch {}
   };
 
   /* ===== Eliminar ===== */
-  function eliminarEnvio(id: string) {
+  async function eliminarEnvio(id: string) {
     if (!isAdmin) return;
     const env = envios.find(e => e.id === id);
     if (!env) return;
     if (!confirm("¿Eliminar este envío?")) return;
 
     if (env.status === "recogido") {
-      const res = subtractFromInventory(env.items); // rollback stock
+      const res = await subtractFromInventory(env.items, equipos, setEquipos); // rollback stock
       if (isSubtractFail(res)) {
         alert(
           "No se puede eliminar: faltan unidades disponibles para revertir este envío.\n" +
