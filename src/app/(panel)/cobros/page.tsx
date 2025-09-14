@@ -81,7 +81,6 @@ const MARGIN_STD = 3.75;
 const MARGIN_PREMIUM = 5.25;
 
 /* ===== Tipos ===== */
-type ZonaId = string;
 
 
 type Corte = {
