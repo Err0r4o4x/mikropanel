@@ -1,11 +1,12 @@
 "use client";
 
 import { LogOut } from "lucide-react";
+import { logout } from "@/lib/fetch-interceptor";
 
 export default function LogoutFab() {
-  async function handleLogout() {
-    await fetch("/api/logout", { method: "POST" });
-    window.location.href = "/login";
+  function handleLogout() {
+    console.log('🔍 [LOGOUT] Cerrando sesión...');
+    logout();
   }
 
   return (

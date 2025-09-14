@@ -74,8 +74,10 @@ export async function POST(req: Request) {
 
     console.log('✅ [API/LOGIN] JWT token creado, longitud:', token.length);
 
+    // Devolver el token en la respuesta para que el frontend lo maneje
     const res = NextResponse.json({ 
-      ok: true, 
+      ok: true,
+      token: token, // Ahora devolvemos el token
       user: {
         id: authResult.user_id,
         username: authResult.username,
@@ -83,19 +85,7 @@ export async function POST(req: Request) {
       }
     });
     
-    // Establecer cookie JWT
-    const cookieOptions = {
-      httpOnly: true, 
-      path: "/", 
-      sameSite: "lax" as const,
-      maxAge: 8 * 60 * 60, // 8 horas
-      secure: process.env.NODE_ENV === 'production' // Solo HTTPS en producción
-    };
-    
-    console.log('🔍 [API/LOGIN] Configuración de cookie:', cookieOptions);
-    res.cookies.set("auth", token, cookieOptions);
-    
-    console.log('✅ [API/LOGIN] Cookie establecida, enviando respuesta exitosa');
+    console.log('✅ [API/LOGIN] Token enviado en respuesta');
     return res;
   } catch (error) {
     console.error('❌ [API/LOGIN] Error crítico en login:', error);
