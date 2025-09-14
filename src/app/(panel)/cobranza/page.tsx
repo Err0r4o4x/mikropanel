@@ -16,7 +16,7 @@ type Zona = { id: string; nombre: string };
 type Cliente = {
   id: string;
   nombre: string;
-  zona: string; // zona id
+  zona_id: string; // zona id
   servicio: number; // Mb
   activo: boolean;
 };
@@ -51,12 +51,12 @@ const buildBatch = (clientesData: Cliente[], tarifasData: Record<string, number>
 
     return activos.map((c) => {
       const mb = Number(c.servicio) || 0;
-      const tarifa = Number(tarifasData[c.zona] ?? 0);
+      const tarifa = Number(tarifasData[c.zona_id] ?? 0);
       return {
         id: `${yyyymm}-${c.id}`,
         clienteId: c.id,
         nombre: c.nombre,
-        zona: c.zona,
+        zona: c.zona_id,
         mb,
         tarifa,
         amount: mb * tarifa,

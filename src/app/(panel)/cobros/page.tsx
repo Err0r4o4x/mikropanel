@@ -235,13 +235,13 @@ export default function CobrosPage() {
     const activos = clientes.filter((c) => c.activo);
 
     const ingreso = activos.reduce((acc, c) => {
-      const tarifa = Number(tarifas[c.zona] ?? 0);
+      const tarifa = Number(tarifas[c.zona_id] ?? 0);
       return acc + tarifa * (Number(c.servicio) || 0);
     }, 0);
 
     let margen = 0;
     for (const c of activos) {
-      const tarifa = Number(tarifas[c.zona] ?? 0);
+      const tarifa = Number(tarifas[c.zona_id] ?? 0);
       const perMb = tarifa === 7 ? MARGIN_PREMIUM : MARGIN_STD;
       margen += perMb * (Number(c.servicio) || 0);
     }

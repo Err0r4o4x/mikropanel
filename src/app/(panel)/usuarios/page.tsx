@@ -37,7 +37,7 @@ type Cliente = {
   servicio: number; // Mb
   router: boolean;
   switch: boolean;
-  zona: ZonaId;
+  zona_id: ZonaId;
   activo: boolean;
 };
 
@@ -141,7 +141,7 @@ export default function UsuariosPage() {
     servicio: string;
     router: boolean;
     switch: boolean;
-    zona: "" | ZonaId;
+    zona_id: "" | ZonaId;
     prorratear: boolean; // <<— NUEVO
   }>({
     nombre: "",
@@ -150,7 +150,7 @@ export default function UsuariosPage() {
     servicio: "",
     router: false,
     switch: false,
-    zona: "",
+    zona_id: "",
     prorratear: false, // por defecto marcado
   });
   const [error, setError] = useState<string | null>(null);
@@ -176,7 +176,7 @@ export default function UsuariosPage() {
     servicio: string;
     router: boolean;
     switch: boolean;
-    zona: ZonaId | "";
+    zona_id: ZonaId | "";
     activo: boolean;
   }>({
     id: "",
@@ -186,7 +186,7 @@ export default function UsuariosPage() {
     servicio: "",
     router: false,
     switch: false,
-    zona: "",
+    zona_id: "",
     activo: true,
   });
 
@@ -275,7 +275,7 @@ export default function UsuariosPage() {
     if (!form.prorratear) return;
 
     const today = new Date();
-    const tarifa = Number(tarifas[nuevo.zona] ?? 0);
+    const tarifa = Number(tarifas[nuevo.zona_id] ?? 0);
     const mensual = tarifa * Number(nuevo.servicio || 0);
     if (!Number.isFinite(mensual) || mensual <= 0) return;
 
@@ -325,11 +325,11 @@ export default function UsuariosPage() {
     const base: Record<ZonaId, { total: number; activos: number; mb: number }> = {};
     zonas.forEach((z) => (base[z.id] = { total: 0, activos: 0, mb: 0 }));
     for (const c of clientes) {
-      if (!base[c.zona]) base[c.zona] = { total: 0, activos: 0, mb: 0 };
-      base[c.zona].total += 1;
+      if (!base[c.zona_id]) base[c.zona_id] = { total: 0, activos: 0, mb: 0 };
+      base[c.zona_id].total += 1;
       if (c.activo) {
-        base[c.zona].activos += 1;
-        base[c.zona].mb += Number(c.servicio) || 0;
+        base[c.zona_id].activos += 1;
+        base[c.zona_id].mb += Number(c.servicio) || 0;
       }
     }
     return base;
@@ -338,7 +338,7 @@ export default function UsuariosPage() {
   /* ===== Listado por zona + búsqueda nombre + orden ===== */
   const clientesZonaSel = useMemo(() => {
     if (!selectedZona) return [];
-    const list = clientes.filter((c) => c.zona === selectedZona);
+    const list = clientes.filter((c) => c.zona_id === selectedZona);
 
     const ql = q.trim().toLowerCase();
     const filtered = ql ? list.filter((c) => c.nombre.toLowerCase().includes(ql)) : list;
@@ -386,7 +386,7 @@ export default function UsuariosPage() {
       servicio: "",
       router: false,
       switch: false,
-      zona: selectedZona ?? "",
+      zona_id: selectedZona ?? "",
       prorratear: false,
     });
     dlgClienteRef.current?.showModal();
@@ -412,7 +412,7 @@ export default function UsuariosPage() {
       servicio: String(c.servicio),
       router: c.router,
       switch: c.switch,
-      zona: c.zona,
+      zona_id: c.zona_id,
       activo: c.activo,
     });
     dlgEditRef.current?.showModal();
@@ -444,12 +444,12 @@ export default function UsuariosPage() {
       const yyyymm = monthKey();
       const lote = activos.map(c => {
         const mb = Number(c.servicio) || 0;
-        const tarifa = Number(tarifas[c.zona] ?? 0);
+        const tarifa = Number(tarifas[c.zona_id] ?? 0);
         return {
           id: `${yyyymm}-${c.id}`,
           clienteId: c.id,
           nombre: c.nombre,
-          zona: c.zona,
+          zona_id: c.zona_id,
           mb,
           tarifa,
           amount: mb * tarifa,
@@ -495,7 +495,7 @@ export default function UsuariosPage() {
     if (!Number.isInteger(servicioNum) || servicioNum < 1 || servicioNum > 50) {
       return setError("Servicio debe ser un entero entre 4 y 50 Mb.");
     }
-    if (!form.zona) return setError("Selecciona una zona.");
+    if (!form.zona_id) return setError("Selecciona una zona.");
 
     // Validación de stock según checks
     if (form.router && !hayStock("router")) {
@@ -513,7 +513,7 @@ export default function UsuariosPage() {
       servicio: servicioNum,
       router: form.router,
       switch: form.switch,
-      zona: form.zona,
+      zona_id: form.zona_id,
       activo: true,
     };
 
@@ -535,7 +535,7 @@ export default function UsuariosPage() {
       console.error(err);
     }
 
-    if (!selectedZona) setSelectedZona(nuevo.zona);
+    if (!selectedZona) setSelectedZona(nuevo.zona_id);
     closeClienteDialog();
   }
 
@@ -593,7 +593,7 @@ export default function UsuariosPage() {
     if (!Number.isInteger(servicioNum) || servicioNum < 1 || servicioNum > 50) {
       return setError("Servicio debe ser un entero entre 4 y 50 Mb.");
     }
-    if (!editForm.zona) return setError("Selecciona una zona.");
+    if (!editForm.zona_id) return setError("Selecciona una zona.");
 
     // Detectar cambios vs registro actual
     const original = clientes.find((c) => c.id === editForm.id);
@@ -615,7 +615,7 @@ export default function UsuariosPage() {
       servicio: servicioNum,
       router: editForm.router,
       switch: editForm.switch,
-      zona: editForm.zona as ZonaId,
+      zona_id: editForm.zona_id as ZonaId,
       activo: editForm.activo,
     };
 
@@ -995,8 +995,8 @@ export default function UsuariosPage() {
               <span className="col-span-1">Zona</span>
               <select
                 className="col-span-3 border rounded px-3 py-2 bg-white"
-                value={form.zona}
-                onChange={(e) => setForm((f) => ({ ...f, zona: e.target.value as ZonaId }))}
+                value={form.zona_id}
+                onChange={(e) => setForm((f) => ({ ...f, zona_id: e.target.value as ZonaId }))}
                 required
               >
                 <option value="" disabled>
@@ -1126,8 +1126,8 @@ export default function UsuariosPage() {
               <span className="col-span-1">Zona</span>
               <select
                 className="col-span-3 border rounded px-3 py-2 bg-white"
-                value={editForm.zona}
-                onChange={(e) => setEditForm((f) => ({ ...f, zona: e.target.value as ZonaId }))}
+                value={editForm.zona_id}
+                onChange={(e) => setEditForm((f) => ({ ...f, zona_id: e.target.value as ZonaId }))}
                 required
                 disabled={!isAdmin}
               >
