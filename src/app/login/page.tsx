@@ -41,15 +41,26 @@ export default function LoginPage() {
 
       if (res.ok) {
         console.log('✅ [LOGIN] Respuesta exitosa, procesando datos...');
-        // ✅ Obtener datos del usuario desde la respuesta de la API
         try {
           const data = await res.json();
-          console.log('🔍 [LOGIN] Datos de usuario recibidos:', { 
+          console.log('🔍 [LOGIN] Datos recibidos:', { 
             ok: data.ok, 
+            hasToken: !!data.token,
+            tokenLength: data.token?.length,
             user: data.user 
           });
           
           const user = data.user;
+          const token = data.token;
+
+          if (!token) {
+            setError("No se recibió token de autenticación");
+            return;
+          }
+
+          // Guardar token en localStorage
+          localStorage.setItem('auth_token', token);
+          console.log('✅ [LOGIN] Token guardado en localStorage');
 
           // Guardar usuario en localStorage para la UI (sidebar, permisos)
           setCurrentUser({
@@ -62,19 +73,11 @@ export default function LoginPage() {
           console.log('✅ [LOGIN] Usuario guardado en localStorage');
         } catch (error) {
           console.error('❌ [LOGIN] Error procesando respuesta de login:', error);
-          // Continuar aunque falle el localStorage
+          setError("Error procesando respuesta del servidor");
+          return;
         }
 
         console.log('🔍 [LOGIN] Redirigiendo a dashboard...');
-        
-        // Verificar que la cookie se estableció correctamente
-        setTimeout(() => {
-          const cookies = document.cookie;
-          console.log('🔍 [LOGIN] Cookies después del login:', cookies);
-          console.log('🔍 [LOGIN] ¿Tiene cookie auth?:', cookies.includes('auth='));
-        }, 100);
-        
-        // La API ya estableció la cookie JWT → redirigir al panel
         router.replace("/");
         return;
       }

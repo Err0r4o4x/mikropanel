@@ -45,9 +45,17 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Verificar JWT token
-  const token = req.cookies.get("auth")?.value;
+  // Verificar JWT token desde Authorization header o cookie (fallback)
+  let token = req.headers.get('authorization')?.replace('Bearer ', '');
+  
+  // Si no hay header Authorization, intentar cookie como fallback
+  if (!token) {
+    token = req.cookies.get("auth")?.value;
+  }
+  
   console.log('🔍 [MIDDLEWARE] Token encontrado:', { 
+    fromHeader: !!req.headers.get('authorization'),
+    fromCookie: !!req.cookies.get("auth")?.value,
     hasToken: !!token, 
     tokenLength: token?.length || 0 
   });
