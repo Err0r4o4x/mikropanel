@@ -10,11 +10,6 @@ import { useTarifas } from "@/hooks/useTarifas";
 const LS_EQUIPOS = "app_equipos";
 
 /** Tipos */
-type EstadoEquipo =
-  | { tipo: "disponible" }
-  | { tipo: "vendido"; fechaISO: string }
-  | { tipo: "asignado"; fechaISO: string; clienteId: string; clienteNombre: string };
-
 type Equipo = {
   id: string;
   etiqueta: string;       // nombre del equipo (agrupa)
