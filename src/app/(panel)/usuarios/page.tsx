@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { MapPin, Plus, Trash2, Pencil, Search } from "lucide-react";
 import { getCurrentUser, isAdminUser, getRole  } from "@/lib/admin";
+import { useSyncedData } from "@/hooks/useSyncedData";
 
 /* ===== LocalStorage keys ===== */
 const LS_ZONAS = "app_zonas";
@@ -110,12 +111,14 @@ const isSwitchName = (s?: string) => (s ?? "").trim().toLowerCase() === "switch"
 
 /* ===== Página ===== */
 export default function UsuariosPage() {
-  // datos
+  // datos sincronizados
   const [selectedZona, setSelectedZona] = useState<ZonaId | null>(null);
-  const [zonas, setZonas] = useState<Zona[]>(ZONAS_BASE);
-  const [tarifas, setTarifas] = useState<Record<ZonaId, number>>(TARIFA_BASE);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  const [zonas, setZonas, zonasLoaded] = useSyncedData<Zona>(LS_ZONAS, ZONAS_BASE);
+  const [tarifas, setTarifas, tarifasLoaded] = useSyncedData<Record<ZonaId, number>>(LS_TARIFAS, [TARIFA_BASE]);
+  const [clientes, setClientes, clientesLoaded] = useSyncedData<Cliente>(LS_CLIENTES, []);
+  
+  // Estado de carga combinado
+  const loaded = zonasLoaded && tarifasLoaded && clientesLoaded;
 
   // rol
   const [isAdmin, setIsAdmin] = useState(false);
@@ -195,50 +198,7 @@ export default function UsuariosPage() {
     activo: true,
   });
 
-  /* ===== Cargar ===== */
-  useEffect(() => {
-    try {
-      const z = localStorage.getItem(LS_ZONAS);
-      if (z) {
-        const parsed: Zona[] = JSON.parse(z);
-        if (Array.isArray(parsed) && parsed.length) setZonas(parsed);
-      }
-    } catch {}
-
-    try {
-      const t = localStorage.getItem(LS_TARIFAS);
-      if (t) {
-        const parsed = JSON.parse(t);
-        if (parsed && typeof parsed === "object") setTarifas(parsed);
-      }
-    } catch {}
-
-    try {
-      const c = localStorage.getItem(LS_CLIENTES);
-      if (c) {
-        const parsed: Cliente[] = JSON.parse(c);
-        if (Array.isArray(parsed)) setClientes(parsed);
-      }
-    } catch {}
-
-    setLoaded(true);
-  }, []);
-
-  /* ===== Guardar ===== */
-  useEffect(() => {
-    if (!loaded) return;
-    localStorage.setItem(LS_ZONAS, JSON.stringify(zonas));
-  }, [loaded, zonas]);
-
-  useEffect(() => {
-    if (!loaded) return;
-    localStorage.setItem(LS_TARIFAS, JSON.stringify(tarifas));
-  }, [loaded, tarifas]);
-
-  useEffect(() => {
-    if (!loaded) return;
-    localStorage.setItem(LS_CLIENTES, JSON.stringify(clientes));
-  }, [loaded, clientes]);
+  // Los datos se cargan y guardan automáticamente con useSyncedData
 
   /* ===== Helpers Inventario/Cobros ===== */
   function readEquipos(): Equipo[] {
@@ -468,22 +428,17 @@ export default function UsuariosPage() {
   const closeEditDialog = () => dlgEditRef.current?.close();
 
   /* ===== Acciones ===== */
-  function toggleActivo(id: string) {
-    setClientes((prev) => prev.map((c) => (c.id === id ? { ...c, activo: !c.activo } : c)));
+  async function toggleActivo(id: string) {
+    const updated = clientes.map((c) => (c.id === id ? { ...c, activo: !c.activo } : c));
+    await setClientes(updated);
   }
   
-  function eliminarUsuario(id: string) {
+  async function eliminarUsuario(id: string) {
     if (!isAdmin) return;
     if (!confirm("¿Seguro que deseas eliminar este usuario?")) return;
 
-    setClientes((prev) => prev.filter((c) => c.id !== id));
-
-    try {
-      const raw = localStorage.getItem(LS_CLIENTES);
-      const list = raw ? JSON.parse(raw) : [];
-      const next = Array.isArray(list) ? list.filter((x: { id?: string }) => x?.id !== id) : [];
-      localStorage.setItem(LS_CLIENTES, JSON.stringify(next));
-    } catch {}
+    const updated = clientes.filter((c) => c.id !== id);
+    await setClientes(updated);
   }
 
   function toggleForceCobranza() {
@@ -541,7 +496,7 @@ export default function UsuariosPage() {
     }
   }
 
-  function handleSubmitCliente(e?: React.FormEvent) {
+  async function handleSubmitCliente(e?: React.FormEvent) {
     e?.preventDefault();
 
     if (!form.nombre.trim()) return setError("El nombre es obligatorio.");
@@ -574,8 +529,8 @@ export default function UsuariosPage() {
       activo: true,
     };
 
-    // Persistimos cliente
-    setClientes((prev) => [...prev, nuevo]);
+    // Persistimos cliente (se sincroniza automáticamente)
+    await setClientes([...clientes, nuevo]);
 
     // Asignaciones automáticas según checks
     try {
@@ -596,7 +551,7 @@ export default function UsuariosPage() {
     closeClienteDialog();
   }
 
-  function handleSubmitCalle(e?: React.FormEvent) {
+  async function handleSubmitCalle(e?: React.FormEvent) {
     e?.preventDefault();
     if (!isAdmin) return;
 
@@ -614,19 +569,14 @@ export default function UsuariosPage() {
     const zonasNext = [...zonas, nuevaZona];
     const tarifasNext = { ...tarifas, [id]: tarifaNum };
 
-    setZonas(zonasNext);
-    setTarifas(tarifasNext);
+    await setZonas(zonasNext);
+    await setTarifas(tarifasNext);
     setSelectedZona(id);
-
-    try {
-      localStorage.setItem(LS_ZONAS, JSON.stringify(zonasNext));
-      localStorage.setItem(LS_TARIFAS, JSON.stringify(tarifasNext));
-    } catch {}
 
     closeCalleDialog();
   }
 
-  function eliminarZona(id: ZonaId) {
+  async function eliminarZona(id: ZonaId) {
     if (!isAdmin) return;
     const stats = resumenZona[id] ?? { total: 0 };
     if ((stats as { total: number }).total > 0) {
@@ -635,15 +585,15 @@ export default function UsuariosPage() {
     }
     if (!confirm("¿Eliminar esta red/calle?")) return;
 
-    setZonas((prev) => prev.filter((z) => z.id !== id));
-    setTarifas((prev) => {
-      const { [id]: _deleted, ...rest } = prev;
-      return rest;
-    });
+    const zonasNext = zonas.filter((z) => z.id !== id);
+    const { [id]: _deleted, ...tarifasNext } = tarifas;
+    
+    await setZonas(zonasNext);
+    await setTarifas(tarifasNext);
     if (selectedZona === id) setSelectedZona(null);
   }
 
-  function handleSubmitEdit(e?: React.FormEvent) {
+  async function handleSubmitEdit(e?: React.FormEvent) {
     e?.preventDefault();
     if (!isAdmin) return;
 
@@ -680,7 +630,8 @@ export default function UsuariosPage() {
       activo: editForm.activo,
     };
 
-    setClientes((prev) => prev.map((c) => (c.id === actualizado.id ? actualizado : c)));
+    const clientesNext = clientes.map((c) => (c.id === actualizado.id ? actualizado : c));
+    await setClientes(clientesNext);
 
     // Asignaciones si pasaron de false -> true
     try {
@@ -705,6 +656,19 @@ export default function UsuariosPage() {
   };
 
   /* ===== UI ===== */
+  
+  // Mostrar pantalla de carga mientras se sincronizan los datos
+  if (!loaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Sincronizando datos...</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="w-full max-w-6xl mx-auto p-6 space-y-6">
       {/* Header */}
