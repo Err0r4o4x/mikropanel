@@ -30,12 +30,6 @@ const monthKey = (d: Date | string = new Date()) => {
 };
 
 /* ===== Tipos ===== */
-// Tipo legacy - ya no se usa, mantenido para compatibilidad
-type EstadoEquipo =
-  | { tipo: "disponible" }
-  | { tipo: "vendido"; fechaISO: string }
-  | { tipo: "asignado"; fechaISO: string; clienteId: string; clienteNombre: string };
-
 type Equipo = {
   id: string;
   etiqueta: string;
@@ -256,7 +250,7 @@ export default function InventarioPage() {
         map.set(key, {
           key, display,
           cantidad: 0, asignadas: 0,
-          precioUSD: e.precioUSD,
+          precioUSD: e.precio_usd,
           lastISO: undefined,
           hasPlaceholder: false,
         });
@@ -317,10 +311,14 @@ export default function InventarioPage() {
     next.unshift({
       id: crypto.randomUUID(),
       etiqueta: name,
-      precioUSD: price,
+      precio_usd: price,
       categoria: "general",
-      estado: { tipo: "disponible" as const },
-      creadoISO: now,
+      estado_tipo: "disponible",
+      estado_fecha: null,
+      estado_cliente_id: null,
+      estado_cliente_nombre: null,
+      placeholder: false,
+      created_at: now,
     });
     await setEquipos(next);
     closeNuevo();
@@ -357,7 +355,7 @@ export default function InventarioPage() {
       const availUnits = equipos.filter(
         (e) =>
           e.etiqueta.trim().toLowerCase() === mov.key &&
-          e.estado.tipo === "disponible" &&
+          e.estado_tipo === "disponible" &&
           !e.placeholder
       );
 
@@ -397,7 +395,7 @@ export default function InventarioPage() {
       const unit = equipos.find(
         (e) =>
           e.etiqueta.trim().toLowerCase() === mov.key &&
-          e.estado.tipo === "disponible" &&
+          e.estado_tipo === "disponible" &&
           !e.placeholder
       );
       if (!unit) {
@@ -454,7 +452,7 @@ export default function InventarioPage() {
     const eliminables = equipos.filter(
       (e) =>
         e.etiqueta.trim().toLowerCase() === g.key &&
-        e.estado.tipo === "disponible" &&
+        e.estado_tipo === "disponible" &&
         !e.placeholder
     ).length;
 
@@ -473,7 +471,7 @@ export default function InventarioPage() {
       const same = e.etiqueta.trim().toLowerCase() === g.key;
       if (!same) return true;
       // Conserva vendidos/asignados; elimina disponibles
-      return e.estado.tipo === "vendido" || e.estado.tipo === "asignado";
+      return e.estado_tipo === "vendido" || e.estado_tipo === "asignado";
     });
     await setEquipos(nextEquipos);
   };

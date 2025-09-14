@@ -41,12 +41,6 @@ type Cliente = {
   activo: boolean;
 };
 
-// Tipo legacy - ya no se usa, mantenido para compatibilidad
-type EstadoEquipo =
-  | { tipo: "disponible" }
-  | { tipo: "vendido"; fechaISO: string }
-  | { tipo: "asignado"; fechaISO: string; clienteId: string; clienteNombre: string };
-
 type Equipo = {
   id: string;
   etiqueta: string;

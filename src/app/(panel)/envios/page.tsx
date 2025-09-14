@@ -9,11 +9,6 @@ import { useEquipos } from "@/hooks/useSupabaseData";
 const LS_ENVIOS  = "app_envios";
 
 /* ===== Tipos ===== */
-type EstadoEquipo =
-  | { tipo: "disponible" }
-  | { tipo: "vendido";  fechaISO: string }
-  | { tipo: "asignado"; fechaISO: string; clienteId: string; clienteNombre: string };
-
 type Equipo = {
   id: string;
   etiqueta: string;
