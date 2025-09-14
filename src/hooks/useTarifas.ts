@@ -31,9 +31,9 @@ export function useTarifas(defaultValue: TarifasRecord = {}): [TarifasRecord, (t
 
       // Convertir array de BD a objeto Record<ZonaId, number>
       const tarifasObj: TarifasRecord = {};
-      (result || []).forEach((item: { zona_id?: string; tarifa?: number }) => {
-        if (item.zona_id && typeof item.tarifa === 'number') {
-          tarifasObj[item.zona_id] = item.tarifa;
+      (result || []).forEach((item: { zona_id?: string; precio_mb?: number }) => {
+        if (item.zona_id && typeof item.precio_mb === 'number') {
+          tarifasObj[item.zona_id] = item.precio_mb;
         }
       });
 
@@ -64,9 +64,9 @@ export function useTarifas(defaultValue: TarifasRecord = {}): [TarifasRecord, (t
       setTarifas(newTarifas);
       
       // Convertir objeto a array para BD
-      const tarifasArray = Object.entries(newTarifas).map(([zona_id, tarifa]) => ({
+      const tarifasArray = Object.entries(newTarifas).map(([zona_id, precio_mb]) => ({
         zona_id,
-        tarifa,
+        precio_mb,
         updated_at: new Date().toISOString()
       }));
       

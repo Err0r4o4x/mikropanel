@@ -30,6 +30,7 @@ const monthKey = (d: Date | string = new Date()) => {
 };
 
 /* ===== Tipos ===== */
+// Tipo legacy - ya no se usa, mantenido para compatibilidad
 type EstadoEquipo =
   | { tipo: "disponible" }
   | { tipo: "vendido"; fechaISO: string }
@@ -39,25 +40,28 @@ type Equipo = {
   id: string;
   etiqueta: string;
   categoria?: string;
-  precioUSD?: number;
-  estado: EstadoEquipo;
-  creadoISO: string;
+  precio_usd?: number;
+  estado_tipo: string;
+  estado_fecha?: string;
+  estado_cliente_id?: string;
+  estado_cliente_nombre?: string;
   placeholder?: boolean;
+  created_at: string;
 };
 
 
 type MovimientoBase = {
   id: string;
-  fechaISO: string;
-  equipoId: string;
-  equipoEtiqueta: string;
+  fecha: string;
+  equipo_id: string;
+  equipo_etiqueta: string;
   actor: string;
 };
 type MovimientoVenta = MovimientoBase & { tipo: "venta" };
 type MovimientoAsignacion = MovimientoBase & {
   tipo: "asignacion";
-  clienteId: string;
-  clienteNombre: string;
+  cliente_id: string;
+  cliente_nombre: string;
   pagado?: boolean; // solo router
 };
 type Movimiento = MovimientoVenta | MovimientoAsignacion;
@@ -153,12 +157,12 @@ export default function InventarioPage() {
       const actor = (getCurrentUser()?.username || getCurrentUser()?.name || "admin").toString().toLowerCase();
       const nuevo: AjusteCobro = {
         id: `manual-${gananciaTarget.id}`,
-        yyyymm: monthKey(gananciaTarget.fechaISO),
+        yyyymm: monthKey(gananciaTarget.fecha),
         amount: val,
-        label: `Ganancia venta ${gananciaTarget.equipoEtiqueta}`,
+        label: `Ganancia venta ${gananciaTarget.equipo_etiqueta}`,
         createdISO: new Date().toISOString(),
         actor,
-        ref: { movId: gananciaTarget.id, equipo: gananciaTarget.equipoEtiqueta.trim().toLowerCase(), type: "manual" },
+        ref: { movId: gananciaTarget.id, equipo: gananciaTarget.equipo_etiqueta.trim().toLowerCase(), type: "manual" },
       };
 
       const next = [...curr, nuevo];
@@ -261,23 +265,23 @@ export default function InventarioPage() {
 
       if (e.placeholder) {
         g.hasPlaceholder = true;
-        if (g.precioUSD == null && e.precioUSD != null) g.precioUSD = e.precioUSD;
-        g.lastISO = g.lastISO ?? e.creadoISO;
+        if (g.precioUSD == null && e.precio_usd != null) g.precioUSD = e.precio_usd;
+        g.lastISO = g.lastISO ?? e.created_at;
         continue;
       }
 
       const refISO =
-        e.estado.tipo === "vendido" ? e.estado.fechaISO
-        : e.estado.tipo === "asignado" ? e.estado.fechaISO
-        : e.creadoISO;
+        e.estado_tipo === "vendido" ? e.estado_fecha
+        : e.estado_tipo === "asignado" ? e.estado_fecha
+        : e.created_at;
       if (!g.lastISO || new Date(refISO).getTime() > new Date(g.lastISO).getTime()) {
         g.lastISO = refISO;
       }
 
-      if (e.estado.tipo === "disponible") g.cantidad += 1;
-      if (e.estado.tipo === "asignado") g.asignadas += 1;
+      if (e.estado_tipo === "disponible") g.cantidad += 1;
+      if (e.estado_tipo === "asignado") g.asignadas += 1;
 
-      if (typeof e.precioUSD === "number") g.precioUSD = e.precioUSD;
+      if (typeof e.precio_usd === "number") g.precioUSD = e.precio_usd;
     }
     return Array.from(map.values()).sort((a, b) => a.display.localeCompare(b.display));
   }, [equipos]);
@@ -325,7 +329,7 @@ export default function InventarioPage() {
   /* ===== Movimiento — modal ===== */
   const [movOpen, setMovOpen] = useState(false);
   const [movQty, setMovQty] = useState<string>("1");
-  const [mov, setMov] = useState<{ key: string; display: string; tipo: "venta" | "asignacion"; clienteId?: string; pagado?: boolean }>(
+  const [mov, setMov] = useState<{ key: string; display: string; tipo: "venta" | "asignacion"; cliente_id?: string; pagado?: boolean }>(
     { key: "", display: "", tipo: "venta" }
   );
   const [errMov, setErrMov] = useState<string | null>(null);
@@ -333,7 +337,7 @@ export default function InventarioPage() {
   const openMovimientoGrupo = (g: Grupo) => {
     if (!canRegistrarMov) return;
     setErrMov(null);
-    setMov({ key: g.key, display: g.display, tipo: "venta", clienteId: undefined, pagado: false });
+    setMov({ key: g.key, display: g.display, tipo: "venta", cliente_id: undefined, pagado: false });
     setMovQty("1");
     setMovOpen(true);
   };
@@ -370,16 +374,16 @@ export default function InventarioPage() {
       const picked = availUnits.slice(0, qty);
       const newMovs: Movimiento[] = picked.map((unit) => ({
         id: crypto.randomUUID(),
-        fechaISO: now,
-        equipoId: unit.id,
-        equipoEtiqueta: unit.etiqueta,
+        fecha: now,
+        equipo_id: unit.id,
+        equipo_etiqueta: unit.etiqueta,
         tipo: "venta",
         actor,
       }));
 
       const marked: Equipo[] = equipos.map((e) => {
         const idx = picked.findIndex(p => p.id === e.id);
-        if (idx >= 0) return { ...e, estado: { tipo: "vendido" as const, fechaISO: now } };
+        if (idx >= 0) return { ...e, estado_tipo: "vendido", estado_fecha: now };
         return e;
         });
 
@@ -404,22 +408,22 @@ export default function InventarioPage() {
         setErrMov("Solo se pueden asignar equipos de tipo Router o Switch.");
         return;
       }
-      if (!mov.clienteId) {
+      if (!mov.cliente_id) {
         setErrMov("Selecciona un cliente para la asignación.");
         return;
       }
-      const cliente = clientes.find((c) => c.id === mov.clienteId);
+      const cliente = clientes.find((c) => c.id === mov.cliente_id);
       const routerPagado = isRouterName(unit.etiqueta) ? Boolean(mov.pagado) : undefined;
 
       const movId = crypto.randomUUID();
       const newMov: MovimientoAsignacion = {
         id: movId,
-        fechaISO: now,
-        equipoId: unit.id,
-        equipoEtiqueta: unit.etiqueta,
+        fecha: now,
+        equipo_id: unit.id,
+        equipo_etiqueta: unit.etiqueta,
         tipo: "asignacion",
-        clienteId: mov.clienteId!,
-        clienteNombre: cliente?.nombre ?? "Desconocido",
+        cliente_id: mov.cliente_id!,
+        cliente_nombre: cliente?.nombre ?? "Desconocido",
         actor,
         pagado: routerPagado ?? undefined,
       };
@@ -427,7 +431,7 @@ export default function InventarioPage() {
       const nextMovs: Movimiento[] = [newMov, ...movs];
       const nextEquipos: Equipo[] = equipos.map((e) =>
         e.id === unit.id
-          ? { ...e, estado: { tipo: "asignado" as const, fechaISO: now, clienteId: mov.clienteId!, clienteNombre: cliente?.nombre ?? "Desconocido" } }
+          ? { ...e, estado_tipo: "asignado", estado_fecha: now, estado_cliente_id: mov.cliente_id!, estado_cliente_nombre: cliente?.nombre ?? "Desconocido" }
           : e
       );
       await setMovs(nextMovs);
@@ -482,7 +486,7 @@ export default function InventarioPage() {
 
     // Revertir equipo -> disponible
     const nextEquipos: Equipo[] = equipos.map((e) =>
-      e.id === m.equipoId ? { ...e, estado: { tipo: "disponible" as const } } : e
+      e.id === m.equipo_id ? { ...e, estado_tipo: "disponible", estado_fecha: null, estado_cliente_id: null, estado_cliente_nombre: null } : e
     );
     await setEquipos(nextEquipos);
 
@@ -519,14 +523,14 @@ export default function InventarioPage() {
     return movs.filter((m) => {
       if (fUsuario && !norm(m.actor).includes(norm(fUsuario))) return false;
       if (fTipo && m.tipo !== fTipo) return false;
-      if (fEquipo && !norm(m.equipoEtiqueta).includes(norm(fEquipo))) return false;
+      if (fEquipo && !norm(m.equipo_etiqueta).includes(norm(fEquipo))) return false;
 
-      const dt = new Date(m.fechaISO);
+      const dt = new Date(m.fecha);
       if (from && dt < from) return false;
       if (to && dt > to) return false;
 
       if (fPagado) {
-        const isRouterAsign = m.tipo === "asignacion" && isRouterName(m.equipoEtiqueta);
+        const isRouterAsign = m.tipo === "asignacion" && isRouterName(m.equipo_etiqueta);
         if (!isRouterAsign) return false;
         const paid = Boolean((m as MovimientoAsignacion).pagado);
         if (fPagado === "si" && !paid) return false;
@@ -755,8 +759,8 @@ export default function InventarioPage() {
 
             {filteredMovs.map((m) => (
               <div key={m.id} className="grid grid-cols-12 items-center text-sm px-4 py-3 border-t hover:bg-slate-50/60 transition">
-                <div className="col-span-3 text-slate-700">{new Date(m.fechaISO).toLocaleString()}</div>
-                <div className="col-span-2">{m.equipoEtiqueta}</div>
+                <div className="col-span-3 text-slate-700">{new Date(m.fecha).toLocaleString()}</div>
+                <div className="col-span-2">{m.equipo_etiqueta}</div>
                 <div className="col-span-2">
                   <span
                     className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs ${
@@ -767,12 +771,12 @@ export default function InventarioPage() {
                     {m.tipo === "venta" ? "Venta" : "Asignación"}
                   </span>
                 </div>
-                <div className="col-span-2">{m.tipo === "asignacion" ? (m as MovimientoAsignacion).clienteNombre || "—" : "—"}</div>
+                <div className="col-span-2">{m.tipo === "asignacion" ? (m as MovimientoAsignacion).cliente_nombre || "—" : "—"}</div>
                 <div className="col-span-1">{prettyName(m.actor)}</div>
 
                 {/* Pagado (solo Router asignado) → crea/quita ajuste +15 */}
                 <div className="col-span-1 text-center">
-                  {m.tipo === "asignacion" && isRouterName(m.equipoEtiqueta) ? (
+                  {m.tipo === "asignacion" && isRouterName(m.equipo_etiqueta) ? (
                     <input
                       type="checkbox"
                       checked={Boolean((m as MovimientoAsignacion).pagado)}
@@ -784,7 +788,7 @@ export default function InventarioPage() {
                         setMovs(nextMovs);
                         try { localStorage.setItem(LS_MOVS, JSON.stringify(nextMovs)); } catch {}
                         localStorage.setItem(TOUCH_MOVS, String(Date.now()));
-                        if (checked) ensureAutoAjusteRouter15(m.id, m.fechaISO);
+                        if (checked) ensureAutoAjusteRouter15(m.id, m.fecha);
                         else removeAutoAjusteRouter15(m.id);
                       }}
                       title="¿El cliente ya pagó el router? (sumará +15)"
@@ -896,9 +900,9 @@ export default function InventarioPage() {
 
           <div className="space-y-3">
             <p className="text-sm text-slate-600">
-              Venta de: <span className="font-medium">{gananciaTarget?.equipoEtiqueta}</span>
+              Venta de: <span className="font-medium">{gananciaTarget?.equipo_etiqueta}</span>
               <br />
-              Fecha: <span className="font-medium">{gananciaTarget ? new Date(gananciaTarget.fechaISO).toLocaleString() : "—"}</span>
+              Fecha: <span className="font-medium">{gananciaTarget ? new Date(gananciaTarget.fecha).toLocaleString() : "—"}</span>
             </p>
 
             <label className="grid grid-cols-4 items-center gap-2">
@@ -980,8 +984,8 @@ export default function InventarioPage() {
                 <>
                   <ClienteCombobox
                     clientes={clientes.map((c) => ({ id: c.id, nombre: c.nombre }))}
-                    value={mov.clienteId ?? ""}
-                    onChange={(id) => setMov((f) => ({ ...f, clienteId: id }))}
+                    value={mov.cliente_id ?? ""}
+                    onChange={(id) => setMov((f) => ({ ...f, cliente_id: id }))}
                   />
                   {isRouterName(mov.display) && (
                     <label className="grid grid-cols-4 items-center gap-2">
