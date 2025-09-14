@@ -7,8 +7,8 @@
 1. Ve a [Supabase](https://supabase.com)
 2. Crea un **NUEVO PROYECTO**
 3. Anota las credenciales:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `SUPABASE_URL`
+   - `SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE` (desde Settings > API)
 
 ### 🗄️ **PASO 2: Ejecutar Esquema de Base de Datos**
