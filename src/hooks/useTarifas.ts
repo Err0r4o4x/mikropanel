@@ -31,7 +31,7 @@ export function useTarifas(defaultValue: TarifasRecord = {}): [TarifasRecord, (t
 
       // Convertir array de BD a objeto Record<ZonaId, number>
       const tarifasObj: TarifasRecord = {};
-      (result || []).forEach((item: any) => {
+      (result || []).forEach((item: { zona_id?: string; tarifa?: number }) => {
         if (item.zona_id && typeof item.tarifa === 'number') {
           tarifasObj[item.zona_id] = item.tarifa;
         }

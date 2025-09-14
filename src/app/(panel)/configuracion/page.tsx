@@ -7,8 +7,6 @@ import { useZonas } from "@/hooks/useSupabaseData";
 import { useTarifas } from "@/hooks/useTarifas";
 
 /** Claves localStorage */
-const LS_ZONAS = "app_zonas";
-const LS_TARIFAS = "app_tarifas";
 const LS_EQUIPOS = "app_equipos";
 
 /** Tipos */
@@ -30,12 +28,6 @@ type Equipo = {
 type Zona = { id: string; nombre: string };
 
 /** Defaults Zonas/Tarifas */
-const ZONAS_BASE: Zona[] = [
-  { id: "carbajal", nombre: "Carbajal" },
-  { id: "santo-suarez", nombre: "Santo Suarez" },
-  { id: "san-francisco", nombre: "San Francisco" },
-  { id: "buenos-aires", nombre: "Buenos Aires" },
-];
 
 const TARIFA_BASE: Record<string, number> = {
   carbajal: 5,
@@ -53,7 +45,7 @@ export default function ConfiguracionPage() {
   }, [router]);
 
   /** ===== Tarifas ===== */
-  const [zonas, setZonas, zonasLoading] = useZonas();
+  const [zonas, , zonasLoading] = useZonas();
   const [tarifas, setTarifas, tarifasLoading] = useTarifas(TARIFA_BASE);
   const [statusTarifas, setStatusTarifas] = useState<string | null>(null);
   

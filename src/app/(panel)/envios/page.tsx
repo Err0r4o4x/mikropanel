@@ -6,7 +6,6 @@ import { Plus, CheckCheck, Package, CheckCircle2, Pencil, Trash2 } from "lucide-
 import { useEquipos } from "@/hooks/useSupabaseData";
 
 /* ===== LocalStorage keys ===== */
-const LS_EQUIPOS = "app_equipos";
 const LS_ENVIOS  = "app_envios";
 
 /* ===== Tipos ===== */
@@ -127,7 +126,7 @@ export default function EnviosPage() {
   const canRecoger     = PERM.recogerEnvio(role);
 
   // Datos directos de Supabase
-  const [equipos, setEquipos, equiposLoading] = useEquipos();
+  const [equipos, , equiposLoading] = useEquipos();
   const [envios, setEnvios] = useState<Envio[]>([]);
   const [grupos, setGrupos] = useState<{ key: string; display: string }[]>([]);
   
