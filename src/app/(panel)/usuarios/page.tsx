@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MapPin, Plus, Trash2, Pencil, Search } from "lucide-react";
 import { getCurrentUser, isAdminUser, getRole  } from "@/lib/admin";
 import { useSyncedData } from "@/hooks/useSyncedData";
@@ -114,11 +114,21 @@ export default function UsuariosPage() {
   // datos sincronizados
   const [selectedZona, setSelectedZona] = useState<ZonaId | null>(null);
   const [zonas, setZonas, zonasLoaded] = useSyncedData<Zona>(LS_ZONAS, ZONAS_BASE);
-  const [tarifas, setTarifas, tarifasLoaded] = useSyncedData<Record<ZonaId, number>>(LS_TARIFAS, [TARIFA_BASE]);
+  const [tarifasArray, setTarifasArray, tarifasLoaded] = useSyncedData<Record<ZonaId, number>>(LS_TARIFAS, [TARIFA_BASE]);
+  
+  // Convertir array a objeto para compatibilidad
+  const tarifas = useMemo(() => {
+    return Array.isArray(tarifasArray) && tarifasArray.length > 0 ? tarifasArray[0] : TARIFA_BASE;
+  }, [tarifasArray]);
   const [clientes, setClientes, clientesLoaded] = useSyncedData<Cliente>(LS_CLIENTES, []);
   
   // Estado de carga combinado
   const loaded = zonasLoaded && tarifasLoaded && clientesLoaded;
+  
+  // Helper para actualizar tarifas
+  const setTarifas = useCallback(async (newTarifas: Record<ZonaId, number>) => {
+    await setTarifasArray([newTarifas]);
+  }, [setTarifasArray]);
 
   // rol
   const [isAdmin, setIsAdmin] = useState(false);
@@ -586,7 +596,7 @@ export default function UsuariosPage() {
     if (!confirm("¿Eliminar esta red/calle?")) return;
 
     const zonasNext = zonas.filter((z) => z.id !== id);
-    const { [id]: _deleted, ...tarifasNext } = tarifas;
+    const { [id]: _, ...tarifasNext } = tarifas;
     
     await setZonas(zonasNext);
     await setTarifas(tarifasNext);
