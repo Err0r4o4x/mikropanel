@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 
+console.log('🚀 [MIDDLEWARE] Iniciando middleware...');
+console.log('🔍 [MIDDLEWARE] Variables de entorno:', {
+  'JWT_SECRET': process.env.JWT_SECRET ? `${process.env.JWT_SECRET.substring(0, 10)}...` : 'NO DEFINIDA',
+  'NODE_ENV': process.env.NODE_ENV,
+  timestamp: new Date().toISOString()
+});
+
 const secret = new TextEncoder().encode(process.env.JWT_SECRET || "mikropanel-fallback-secret");
 
 async function isValidToken(token?: string) {

@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase/server";
 import { SignJWT } from "jose";
 
+console.log('🚀 [API/LOGIN] Iniciando ruta de login...');
+console.log('🔍 [API/LOGIN] Variables de entorno:', {
+  'JWT_SECRET': process.env.JWT_SECRET ? `${process.env.JWT_SECRET.substring(0, 10)}...` : 'NO DEFINIDA',
+  'NODE_ENV': process.env.NODE_ENV,
+  timestamp: new Date().toISOString()
+});
+
 const secret = new TextEncoder().encode(process.env.JWT_SECRET || "mikropanel-fallback-secret");
 
 export async function POST(req: Request) {
