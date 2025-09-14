@@ -28,9 +28,9 @@ const monthKey = (d = new Date()) =>
 /* ===== Tipos ===== */
 type Gasto = {
   id: string;
-  fechaISO: string;
+  fecha: string;
   motivo: string;
-  montoUSD: number;
+  monto_usd: number;
   usuario: string;
 };
 
@@ -107,9 +107,9 @@ export default function GastosPage() {
 
     const nuevo: Gasto = {
       id: crypto.randomUUID(),
-      fechaISO: new Date().toISOString(),
+      fecha: new Date().toISOString(),
       motivo: motivoTrim,
-      montoUSD: Math.round(montoNum * 100) / 100,
+      monto_usd: Math.round(montoNum * 100) / 100,
       usuario: username,
     };
 
@@ -121,10 +121,10 @@ export default function GastosPage() {
     const ajustes = readAjustes().filter((a) => a.id !== `gasto-${nuevo.id}`);
     ajustes.push({
       id: `gasto-${nuevo.id}`,
-      yyyymm: monthKey(new Date(nuevo.fechaISO)),
-      amount: -Math.abs(nuevo.montoUSD),
+      yyyymm: monthKey(new Date(nuevo.fecha)),
+      amount: -Math.abs(nuevo.monto_usd),
       label: `Gasto: ${nuevo.motivo}`,
-      createdISO: nuevo.fechaISO,
+      createdISO: nuevo.fecha,
       actor: nuevo.usuario,
       meta: { type: "gasto", gastoId: nuevo.id, carryPrevOn7: true },
     });
@@ -159,24 +159,24 @@ export default function GastosPage() {
           const hay = g.motivo.toLowerCase().includes(ql) || g.usuario.toLowerCase().includes(ql);
           if (!hay) return false;
         }
-        const f = new Date(g.fechaISO);
+        const f = new Date(g.fecha);
         if (dFrom && f < dFrom) return false;
         if (dTo && f > dTo) return false;
         return true;
       })
-      .sort((a, b) => +new Date(b.fechaISO) - +new Date(a.fechaISO));
+      .sort((a, b) => +new Date(b.fecha) - +new Date(a.fecha));
   }, [gastos, q, desde, hasta]);
 
   const totalFiltrado = useMemo(
-    () => filtrados.reduce((acc, g) => acc + g.montoUSD, 0), [filtrados]
+    () => filtrados.reduce((acc, g) => acc + g.monto_usd, 0), [filtrados]
   );
 
   const dataBar = useMemo(() => {
     const map = new Map<string, number>();
     for (const g of gastos) {
-      const d = new Date(g.fechaISO);
+      const d = new Date(g.fecha);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      map.set(key, (map.get(key) ?? 0) + g.montoUSD);
+      map.set(key, (map.get(key) ?? 0) + g.monto_usd);
     }
     const today = new Date();
     const items: { ym: string; label: string; total: number }[] = [];
@@ -252,12 +252,12 @@ export default function GastosPage() {
         ) : filtrados.map((g) => (
           <div key={g.id} className="grid grid-cols-12 items-center text-sm px-4 py-3 border-b last:border-b-0">
             <div className="col-span-3">
-              {new Date(g.fechaISO).toLocaleString()}
-              <div className="text-xs text-slate-500">{g.fechaISO.slice(0, 10)}</div>
+              {new Date(g.fecha).toLocaleString()}
+              <div className="text-xs text-slate-500">{g.fecha.slice(0, 10)}</div>
             </div>
             <div className="col-span-4 truncate">{g.motivo}</div>
             <div className="col-span-2">{g.usuario}</div>
-            <div className="col-span-2 text-right font-medium">{currency(g.montoUSD)}</div>
+            <div className="col-span-2 text-right font-medium">{currency(g.monto_usd)}</div>
             {isAdmin && (
               <div className="col-span-1 text-right">
                 <button onClick={() => deleteGasto(g.id)}

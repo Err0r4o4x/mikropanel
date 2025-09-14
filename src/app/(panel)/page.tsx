@@ -64,7 +64,7 @@ export default function DashboardPage() {
 
     const byZonaMb = new Map<ZonaId, number>();
     for (const c of activos) {
-      byZonaMb.set(c.zona, (byZonaMb.get(c.zona) ?? 0) + (Number(c.servicio) || 0));
+      byZonaMb.set(c.zona_id, (byZonaMb.get(c.zona_id) ?? 0) + (Number(c.servicio) || 0));
     }
 
     const detalles = zonas
@@ -83,7 +83,7 @@ export default function DashboardPage() {
     // Margen por Mb (tarifa 7 => premium)
     let margen = 0;
     for (const c of activos) {
-      const tarifaZona = tarifas[c.zona] ?? 0;
+      const tarifaZona = tarifas[c.zona_id] ?? 0;
       const perMb = tarifaZona === 7 ? MARGIN_PREMIUM : MARGIN_STD;
       margen += perMb * (Number(c.servicio) || 0);
     }
