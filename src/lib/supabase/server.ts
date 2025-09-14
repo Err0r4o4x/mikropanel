@@ -5,8 +5,8 @@ const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE;
 
 if (!supabaseUrl || supabaseUrl === 'undefined') {
-  console.error('❌ NEXT_PUBLIC_SUPABASE_URL no está configurada');
-  throw new Error('NEXT_PUBLIC_SUPABASE_URL is required');
+  console.error('❌ SUPABASE_URL no está configurada');
+  throw new Error('SUPABASE_URL is required');
 }
 
 if (!supabaseServiceRole || supabaseServiceRole === 'undefined') {
