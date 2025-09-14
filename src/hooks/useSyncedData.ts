@@ -87,7 +87,7 @@ export function useSyncedData<T>(
     
     // Sincronizar con Supabase en background
     try {
-      const syncSuccess = await syncToSupabase(localStorageKey, newData);
+      const syncSuccess = await syncToSupabase(localStorageKey, newData as Record<string, unknown>[]);
       if (syncSuccess) {
         console.log(`✅ [SYNCED-DATA] ${localStorageKey} sincronizado con Supabase`);
         

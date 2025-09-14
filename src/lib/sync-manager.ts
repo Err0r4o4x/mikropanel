@@ -82,7 +82,7 @@ export async function syncFromSupabase(localStorageKey: string): Promise<boolean
     }
 
     // Actualizar localStorage
-    let currentData: any[] = [];
+    let currentData: Record<string, unknown>[] = [];
     try {
       const raw = localStorage.getItem(localStorageKey);
       currentData = raw ? JSON.parse(raw) : [];
