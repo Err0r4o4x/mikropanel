@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { getRole, PERM, getCurrentUser, isAdminUser } from "@/lib/admin";
 import { Plus, CheckCheck, Package, CheckCircle2, Pencil, Trash2 } from "lucide-react";
+import { useEquipos } from "@/hooks/useSupabaseData";
 
 /* ===== LocalStorage keys ===== */
 const LS_EQUIPOS = "app_equipos";
@@ -40,12 +41,10 @@ type Envio = {
 const nowISO = (): string => new Date().toISOString();
 
 /** Grupos desde inventario (incluye placeholders) */
-function readGrupos(): { key: string; display: string }[] {
+const readGrupos = (equiposList: Equipo[]): { key: string; display: string }[] => {
   try {
-    const raw = localStorage.getItem(LS_EQUIPOS);
-    const list: Equipo[] = raw ? JSON.parse(raw) : [];
     const map = new Map<string, string>();
-    for (const e of list) {
+    for (const e of equiposList) {
       const k = e.etiqueta.trim().toLowerCase();
       const d = e.etiqueta.trim();
       if (!map.has(k)) map.set(k, d);
@@ -55,15 +54,13 @@ function readGrupos(): { key: string; display: string }[] {
   } catch {
     return [];
   }
-}
+};
 
 /** Suma unidades al inventario */
-function addToInventory(items: EnvioItem[]) {
+const addToInventory = async (items: EnvioItem[], equiposList: Equipo[], setEquiposFn: (equipos: Equipo[]) => Promise<void>) => {
   try {
-    const raw = localStorage.getItem(LS_EQUIPOS);
-    const list: Equipo[] = raw ? JSON.parse(raw) : [];
     const now = nowISO();
-    const next = list.slice();
+    const next = equiposList.slice();
     for (const it of items) {
       for (let i = 0; i < it.qty; i++) {
         next.unshift({
@@ -74,10 +71,9 @@ function addToInventory(items: EnvioItem[]) {
         });
       }
     }
-    localStorage.setItem(LS_EQUIPOS, JSON.stringify(next));
-    window.dispatchEvent(new StorageEvent("storage", { key: LS_EQUIPOS, newValue: JSON.stringify(next) }));
+    await setEquiposFn(next);
   } catch {}
-}
+};
 
 /** Resta unidades disponibles del inventario */
 type SubtractResult =
@@ -88,13 +84,10 @@ function isSubtractFail(r: SubtractResult): r is Extract<SubtractResult, { ok: f
   return r.ok === false;
 }
 
-function subtractFromInventory(items: EnvioItem[]): SubtractResult {
+const subtractFromInventory = async (items: EnvioItem[], equiposList: Equipo[], setEquiposFn: (equipos: Equipo[]) => Promise<void>): Promise<SubtractResult> => {
   try {
-    const raw = localStorage.getItem(LS_EQUIPOS);
-    const list: Equipo[] = raw ? JSON.parse(raw) : [];
-
     const disponiblesPorKey = new Map<string, number>();
-    for (const e of list) {
+    for (const e of equiposList) {
       if (e.estado.tipo !== "disponible" || e.placeholder) continue;
       const k = e.etiqueta.trim().toLowerCase();
       disponiblesPorKey.set(k, (disponiblesPorKey.get(k) || 0) + 1);
@@ -109,7 +102,7 @@ function subtractFromInventory(items: EnvioItem[]): SubtractResult {
 
     const remainingByKey = new Map(items.map(it => [it.key, it.qty]));
     const next: Equipo[] = [];
-    for (const e of list) {
+    for (const e of equiposList) {
       const k = e.etiqueta.trim().toLowerCase();
       const need = remainingByKey.get(k) || 0;
       if (need > 0 && e.estado.tipo === "disponible" && !e.placeholder) {
@@ -118,13 +111,12 @@ function subtractFromInventory(items: EnvioItem[]): SubtractResult {
       }
       next.push(e);
     }
-    localStorage.setItem(LS_EQUIPOS, JSON.stringify(next));
-    window.dispatchEvent(new StorageEvent("storage", { key: LS_EQUIPOS, newValue: JSON.stringify(next) }));
+    await setEquiposFn(next);
     return { ok: true };
   } catch {
     return { ok: false, missing: items.map(it => ({ key: it.key, display: it.display, falta: it.qty })) };
   }
-}
+};
 
 /* ===== Página ===== */
 export default function EnviosPage() {
@@ -134,8 +126,13 @@ export default function EnviosPage() {
   const canDisponible  = PERM.marcarDisponible(role);
   const canRecoger     = PERM.recogerEnvio(role);
 
+  // Datos directos de Supabase
+  const [equipos, setEquipos, equiposLoading] = useEquipos();
   const [envios, setEnvios] = useState<Envio[]>([]);
   const [grupos, setGrupos] = useState<{ key: string; display: string }[]>([]);
+  
+  // Estado de carga
+  const isLoading = equiposLoading;
 
   // Modal crear
   const [openNew, setOpenNew] = useState(false);
@@ -148,22 +145,21 @@ export default function EnviosPage() {
 
   /* Cargar */
   useEffect(() => {
+    if (equiposLoading) return;
+    
     try {
       const raw = localStorage.getItem(LS_ENVIOS);
       const list: Envio[] = raw ? JSON.parse(raw) : [];
       setEnvios(Array.isArray(list) ? list : []);
     } catch {}
-    setGrupos(readGrupos());
-  }, []);
+    setGrupos(readGrupos(equipos));
+  }, [equiposLoading, equipos]);
 
   /* Sync por storage */
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === LS_ENVIOS && e.newValue != null) {
         try { setEnvios(JSON.parse(e.newValue)); } catch {}
-      }
-      if (e.key === LS_EQUIPOS) {
-        setGrupos(readGrupos());
       }
     };
     window.addEventListener("storage", onStorage);
@@ -344,6 +340,18 @@ export default function EnviosPage() {
   const enCamino    = envios.filter(e => e.status === "en_camino");
   const disponibles = envios.filter(e => e.status === "disponible");
   const historial   = envios.filter(e => e.status === "recogido");
+
+  // Mostrar pantalla de carga
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando envíos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">

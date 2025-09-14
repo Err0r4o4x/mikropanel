@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, Package2 } from "lucide-react";
 import { getCurrentUser, isAdminUser, getRole, PERM } from "@/lib/admin";
+import { useClientes, useEquipos, useMovimientos } from "@/hooks/useSupabaseData";
 
 /* ===== LocalStorage keys ===== */
 const LS_EQUIPOS = "app_equipos";
@@ -79,10 +80,13 @@ const AJUSTE_ROUTER_PAGADO_USD = 15;
 
 /* ===== Página ===== */
 export default function InventarioPage() {
-  const [equipos, setEquipos] = useState<Equipo[]>([]);
-  const [movs, setMovs] = useState<Movimiento[]>([]);
-  const [clientes, setClientes] = useState<Cliente[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  // Datos directos de Supabase
+  const [equipos, setEquipos, equiposLoading] = useEquipos();
+  const [movs, setMovs, movsLoading] = useMovimientos();
+  const [clientes, , clientesLoading] = useClientes();
+  
+  // Estado de carga combinado
+  const loaded = !equiposLoading && !movsLoading && !clientesLoading;
 
   // ==== Ganancia manual para VENTAS ====
   const dlgGananciaRef = useRef<HTMLDialogElement | null>(null);
@@ -195,47 +199,7 @@ export default function InventarioPage() {
   const canNewEquipo = PERM.newEquipo(role);
   const canRegistrarMov = PERM.registrarMov(role);
 
-  /* ===== Cargar ===== */
-  useEffect(() => {
-    try {
-      const rawE = localStorage.getItem(LS_EQUIPOS);
-      if (rawE) {
-        const parsed = JSON.parse(rawE);
-        if (Array.isArray(parsed)) setEquipos(parsed as Equipo[]);
-      }
-    } catch {}
-    try {
-      const rawM = localStorage.getItem(LS_MOVS);
-      if (rawM) {
-        const parsed = JSON.parse(rawM);
-        if (Array.isArray(parsed)) setMovs(parsed as Movimiento[]);
-      }
-    } catch {}
-    try {
-      const rawC = localStorage.getItem(LS_CLIENTES);
-      if (rawC) {
-        const list = JSON.parse(rawC);
-        const activos = Array.isArray(list)
-          ? (list as { id: string; nombre: string; zona: string; activo: boolean }[])
-              .filter((c) => c?.activo)
-              .map((c) => ({ id: c.id, nombre: c.nombre, zona: c.zona, activo: true }))
-          : [];
-        setClientes(activos);
-      }
-    } catch {}
-    setLoaded(true);
-  }, []);
-
-  /* ===== Guardar ===== */
-  useEffect(() => {
-    if (!loaded) return;
-    try { localStorage.setItem(LS_EQUIPOS, JSON.stringify(equipos)); } catch {}
-  }, [loaded, equipos]);
-
-  useEffect(() => {
-    if (!loaded) return;
-    try { localStorage.setItem(LS_MOVS, JSON.stringify(movs)); } catch {}
-  }, [loaded, movs]);
+  // Los datos se cargan automáticamente con hooks de Supabase
 
   /* ===== Ajuste auto +15 cuando Pagado = true (router asignado) ===== */
   function ensureAutoAjusteRouter15(movId: string, fechaISO: string) {
@@ -381,7 +345,7 @@ export default function InventarioPage() {
 
   const closeMovimiento = () => setMovOpen(false);
 
-  const submitMovimiento = (e?: React.FormEvent) => {
+  const submitMovimiento = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!canRegistrarMov) return;
 
@@ -425,11 +389,8 @@ export default function InventarioPage() {
         });
 
       const nextMovs: Movimiento[] = [...newMovs, ...movs];
-      setMovs(nextMovs);
-      setEquipos(marked);
-      try { localStorage.setItem(LS_MOVS, JSON.stringify(nextMovs)); } catch {}
-      try { localStorage.setItem(LS_EQUIPOS, JSON.stringify(marked)); } catch {}
-      localStorage.setItem(TOUCH_MOVS, String(Date.now()));
+      await setMovs(nextMovs);
+      await setEquipos(marked);
       setMovOpen(false);
       return;
     } else {
@@ -474,11 +435,8 @@ export default function InventarioPage() {
           ? { ...e, estado: { tipo: "asignado" as const, fechaISO: now, clienteId: mov.clienteId!, clienteNombre: cliente?.nombre ?? "Desconocido" } }
           : e
       );
-      setMovs(nextMovs);
-      setEquipos(nextEquipos);
-      try { localStorage.setItem(LS_MOVS, JSON.stringify(nextMovs)); } catch {}
-      try { localStorage.setItem(LS_EQUIPOS, JSON.stringify(nextEquipos)); } catch {}
-      localStorage.setItem(TOUCH_MOVS, String(Date.now()));
+      await setMovs(nextMovs);
+      await setEquipos(nextEquipos);
 
       // Si se marcó pagado en el modal y es router -> crea el +15
       if (isRouterName(unit.etiqueta) && routerPagado) {
@@ -524,7 +482,7 @@ export default function InventarioPage() {
 
 
   /* ===== Eliminar movimiento (revierte) ===== */
-  const eliminarMovimiento = (m: Movimiento) => {
+  const eliminarMovimiento = async (m: Movimiento) => {
     if (!isAdmin) return;
     if (!confirm("¿Eliminar este registro y revertir su efecto?")) return;
 
@@ -541,14 +499,13 @@ export default function InventarioPage() {
     // Eliminar ajustes vinculados (manual/auto) de ese movId
     removeAutoAjusteRouter15(m.id);
     try {
-      localStorage.setItem(LS_EQUIPOS, JSON.stringify(nextEquipos));
-      localStorage.setItem(LS_MOVS, JSON.stringify(nextMovs));
+      await setEquipos(nextEquipos);
+      await setMovs(nextMovs);
       // Además borra cualquier ajuste manual enlazado a movId (compatibilidad)
       const raw = localStorage.getItem(LS_AJUSTES_COBROS);
       const list: AjusteCobro[] = raw ? JSON.parse(raw) : [];
       const filtered = Array.isArray(list) ? list.filter((a) => a?.ref?.movId !== m.id) : [];
       localStorage.setItem(LS_AJUSTES_COBROS, JSON.stringify(filtered));
-      localStorage.setItem(TOUCH_MOVS, String(Date.now()));
     } catch {}
   };
 
@@ -586,6 +543,19 @@ export default function InventarioPage() {
   }, [movs, fUsuario, fTipo, fEquipo, fPagado, fDesde, fHasta]);
 
   /* ===== UI ===== */
+  
+  // Mostrar pantalla de carga
+  if (!loaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando inventario...</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-8">
       {/* Header */}

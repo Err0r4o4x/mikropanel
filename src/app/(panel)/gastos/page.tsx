@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { getRole } from "@/lib/admin";
 import { getCurrentUser, isAdminUser } from "@/lib/admin";
+import { useGastos } from "@/hooks/useSupabaseData";
 import {
   ResponsiveContainer,
   BarChart,
@@ -45,8 +46,9 @@ type Ajuste = {
 };
 
 export default function GastosPage() {
-  const [gastos, setGastos] = useState<Gasto[]>([]);
-  const [loaded, setLoaded] = useState(false);
+  // Datos directos de Supabase
+  const [gastos, setGastos, gastosLoading] = useGastos();
+  const loaded = !gastosLoading;
   const role = getRole();
   const canCreateGasto = role !== "envios"; // envios NO puede crear gastos
 
@@ -68,23 +70,7 @@ export default function GastosPage() {
     return () => window.removeEventListener("storage", onStorage);
   }, []);
 
-  // cargar
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(LS_GASTOS);
-      if (raw) {
-        const list: Gasto[] = JSON.parse(raw);
-        if (Array.isArray(list)) setGastos(list);
-      }
-    } catch {}
-    setLoaded(true);
-  }, []);
-
-  // guardar cache gastos
-  useEffect(() => {
-    if (!loaded) return;
-    try { localStorage.setItem(LS_GASTOS, JSON.stringify(gastos)); } catch {}
-  }, [loaded, gastos]);
+  // Los datos se cargan automáticamente con hooks de Supabase
 
   function openDialog() {
     setMotivo(""); setMonto(""); setFormErr(null);
@@ -108,7 +94,7 @@ export default function GastosPage() {
     window.dispatchEvent(new StorageEvent("storage", { key: LS_AJUSTES }));
   };
 
-  function submitGasto(e?: React.FormEvent) {
+  async function submitGasto(e?: React.FormEvent) {
     e?.preventDefault();
     setFormErr(null);
 
@@ -129,11 +115,8 @@ export default function GastosPage() {
     };
 
     // 1) guardar gasto
-    setGastos((prev) => {
-      const next = [nuevo, ...prev];
-      try { localStorage.setItem(LS_GASTOS, JSON.stringify(next)); } catch {}
-      return next;
-    });
+    const next = [nuevo, ...gastos];
+    await setGastos(next);
 
     // 2) crear/actualizar ajuste negativo persistido
     const ajustes = readAjustes().filter((a) => a.id !== `gasto-${nuevo.id}`);
@@ -151,15 +134,12 @@ export default function GastosPage() {
     closeDialog();
   }
 
-  function deleteGasto(id: string) {
+  async function deleteGasto(id: string) {
     if (!isAdmin) return;
     if (!confirm("¿Eliminar este gasto del historial?")) return;
 
-    setGastos((prev) => {
-      const next = prev.filter((g) => g.id !== id);
-      try { localStorage.setItem(LS_GASTOS, JSON.stringify(next)); } catch {}
-      return next;
-    });
+    const next = gastos.filter((g) => g.id !== id);
+    await setGastos(next);
 
     // borrar el ajuste asociado
     const ajustes = readAjustes().filter(
@@ -212,6 +192,18 @@ export default function GastosPage() {
   }, [gastos]);
 
   const totalMeses = useMemo(() => dataBar.reduce((a, m) => a + m.total, 0), [dataBar]);
+
+  // Mostrar pantalla de carga
+  if (!loaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando gastos...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-6xl mx-auto p-6">

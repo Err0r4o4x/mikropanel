@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, CheckCircle2 } from "lucide-react";
 import { getCurrentUser, isAdminUser } from "@/lib/admin";
+import { useClientes, useZonas } from "@/hooks/useSupabaseData";
+import { useTarifas } from "@/hooks/useTarifas";
 
 /* ===== Storage keys ===== */
 const LS_CLIENTES = "app_clientes";
@@ -44,18 +46,15 @@ function currency(n?: number) {
 }
 
 /** Construye el lote de cobranza (todos pagado=false) para el mes actual */
-function buildBatch(): CobroItem[] {
+// Función para construir lote del mes - ahora usa datos de Supabase
+const buildBatch = (clientesData: Cliente[], tarifasData: Record<string, number>): CobroItem[] => {
   try {
-    const rawC = localStorage.getItem(LS_CLIENTES);
-    const rawT = localStorage.getItem(LS_TARIFAS);
-    const clientes: Cliente[] = rawC ? JSON.parse(rawC) : [];
-    const tarifas: Record<string, number> = rawT ? JSON.parse(rawT) : {};
-    const activos = Array.isArray(clientes) ? clientes.filter((c) => c?.activo) : [];
+    const activos = Array.isArray(clientesData) ? clientesData.filter((c) => c?.activo) : [];
     const yyyymm = monthKey();
 
     return activos.map((c) => {
       const mb = Number(c.servicio) || 0;
-      const tarifa = Number(tarifas[c.zona] ?? 0);
+      const tarifa = Number(tarifasData[c.zona] ?? 0);
       return {
         id: `${yyyymm}-${c.id}`,
         clienteId: c.id,
@@ -70,30 +69,38 @@ function buildBatch(): CobroItem[] {
   } catch {
     return [];
   }
-}
+};
 
 export default function CobranzaPage() {
   const router = useRouter();
+  
+  // Datos directos de Supabase
+  const [clientes, , clientesLoading] = useClientes();
+  const [zonasArray, , zonasLoading] = useZonas();
+  const [tarifas, , tarifasLoading] = useTarifas({});
+  
+  // Estado de carga combinado
+  const isLoading = clientesLoading || zonasLoading || tarifasLoading;
+  
+  // Convertir zonas array a objeto para compatibilidad
+  const zonas = useMemo(() => {
+    const zmap: Record<string, Zona> = {};
+    zonasArray.forEach((z) => (zmap[z.id] = z));
+    return zmap;
+  }, [zonasArray]);
+  
   const [items, setItems] = useState<CobroItem[]>([]);
-  const [zonas, setZonas] = useState<Record<string, Zona>>({});
   const [q, setQ] = useState("");
   const [doneMsg, setDoneMsg] = useState<string | null>(null);
 
   const isAdmin = useMemo(() => isAdminUser(getCurrentUser()), []);
 
-  // Cargar/crear lote del mes (si no existe o si se forzó)
+  // Cargar/crear lote del mes cuando los datos estén listos
   useEffect(() => {
+    if (isLoading || clientes.length === 0) return;
+    
     try {
-      // Zonas bonitos
-      const rawZ = localStorage.getItem(LS_ZONAS);
-      const zonasArr: Zona[] = rawZ ? JSON.parse(rawZ) : [];
-      const zmap: Record<string, Zona> = {};
-      zonasArr.forEach((z) => (zmap[z.id] = z));
-      setZonas(zmap);
-    } catch {}
-
-    // Lote del mes
-    try {
+      // Lote del mes
       const yyyymm = monthKey();
       const rawAll = localStorage.getItem(LS_COBROS_MES);
       const all = rawAll ? JSON.parse(rawAll) : {};
@@ -103,7 +110,7 @@ export default function CobranzaPage() {
 
       // si no existe lote o está forzado → reconstruimos con todos pagado=false
       if (!lote.length || forced) {
-        lote = buildBatch();
+        lote = buildBatch(clientes, tarifas);
         all[yyyymm] = lote;
         localStorage.setItem(LS_COBROS_MES, JSON.stringify(all));
       }
@@ -127,7 +134,7 @@ export default function CobranzaPage() {
     };
     window.addEventListener("storage", onStorage);
     return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  }, [isLoading, clientes]);
 
   // Agrupar/filtrar
   const filtered = useMemo(() => {
@@ -197,6 +204,18 @@ export default function CobranzaPage() {
       return () => clearTimeout(t);
     }
   }, [totales.allPaid, isAdmin, router]);
+
+  // Mostrar pantalla de carga
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando cobranza...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-3xl mx-auto p-4 sm:p-6 space-y-6">

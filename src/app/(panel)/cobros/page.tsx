@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getCurrentUser, isAdminUser } from "@/lib/admin";
+import { useClientes } from "@/hooks/useSupabaseData";
+import { useTarifas } from "@/hooks/useTarifas";
 import {
   ResponsiveContainer,
   ComposedChart,
@@ -134,27 +136,16 @@ export default function CobrosPage() {
   }, [router]);
 
   /* ===== Base de datos (clientes/tarifas) ===== */
-  const [tarifas, setTarifas] = useState<Record<ZonaId, number>>({});
-  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [clientes, , clientesLoading] = useClientes();
+  const [tarifas, , tarifasLoading] = useTarifas({});
   const [cortes, setCortes] = useState<Corte[]>([]);
   const [loadedCortes, setLoadedCortes] = useState(false);
+  
+  // Estado de carga combinado
+  const isLoading = clientesLoading || tarifasLoading;
 
   useEffect(() => {
-    try {
-      const t = localStorage.getItem(LS_TARIFAS);
-      if (t) {
-        const parsed = JSON.parse(t);
-        if (parsed && typeof parsed === "object") setTarifas(parsed);
-      }
-    } catch {}
-
-    try {
-      const c = localStorage.getItem(LS_CLIENTES);
-      if (c) {
-        const parsed = JSON.parse(c);
-        if (Array.isArray(parsed)) setClientes(parsed);
-      }
-    } catch {}
+    // Los datos de clientes y tarifas se cargan automáticamente con hooks
 
     try {
       const raw = localStorage.getItem(LS_COBROS_CORTES);
@@ -574,6 +565,19 @@ export default function CobrosPage() {
   const movimientosNow = envMovs.filter((m) => m.yyyymm === mkNow);
 
   /* ===== Render ===== */
+  
+  // Mostrar pantalla de carga
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Cargando cobros...</p>
+        </div>
+      </div>
+    );
+  }
+  
   return (
     <div className="max-w-6xl mx-auto p-6 space-y-6">
       {/* Header */}
