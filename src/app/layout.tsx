@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SupabaseStorageProvider from "@/components/SupabaseStorageProvider";
 import EnvDiagnostic from "@/components/EnvDiagnostic";
+import SyncProvider from "@/components/SyncProvider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,8 +31,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <SupabaseStorageProvider>
-          <EnvDiagnostic />
-          {children}
+          <SyncProvider>
+            <EnvDiagnostic />
+            {children}
+          </SyncProvider>
         </SupabaseStorageProvider>
       </body>
     </html>
