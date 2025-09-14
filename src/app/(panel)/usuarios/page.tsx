@@ -596,6 +596,7 @@ export default function UsuariosPage() {
     if (!confirm("¿Eliminar esta red/calle?")) return;
 
     const zonasNext = zonas.filter((z) => z.id !== id);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { [id]: _, ...tarifasNext } = tarifas;
     
     await setZonas(zonasNext);
