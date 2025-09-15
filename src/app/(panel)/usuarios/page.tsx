@@ -126,8 +126,8 @@ export default function UsuariosPage() {
   }, []);
 
   const canCreateUsuario = role !== "envios";
-  const canEditUsuario = role === "admin" || role === "tech";
-  const canDeleteUsuario = role === "admin";
+  const canEditUsuario = role === "owner" || role === "admin" || role === "tech";
+  const canDeleteUsuario = role === "owner" || role === "admin";
 
   // ==== Funciones simplificadas (sin localStorage) ====
   // function hayStock(etiqueta: "router" | "switch") {
