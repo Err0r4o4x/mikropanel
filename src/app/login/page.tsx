@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { setCurrentUser } from "@/lib/admin";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -49,6 +50,7 @@ export default function LoginPage() {
             user: data.user 
           });
           
+          const user = data.user;
           const token = data.token;
 
           if (!token) {
@@ -56,12 +58,19 @@ export default function LoginPage() {
             return;
           }
 
-          // Guardar token en localStorage para autenticación
+          // Guardar token en localStorage
           localStorage.setItem('auth_token', token);
           console.log('✅ [LOGIN] Token guardado en localStorage');
 
-          // El usuario se consultará desde la BD usando el hook useCurrentUser
-          console.log('✅ [LOGIN] Usuario se consultará desde BD');
+          // Guardar usuario en localStorage para la UI (sidebar, permisos)
+          setCurrentUser({
+            id: user.id,
+            username: user.username,
+            rol: user.role,
+            isAdmin: user.role === "admin" || user.role === "owner",
+          });
+          
+          console.log('✅ [LOGIN] Usuario guardado en localStorage');
         } catch (error) {
           console.error('❌ [LOGIN] Error procesando respuesta de login:', error);
           setError("Error procesando respuesta del servidor");

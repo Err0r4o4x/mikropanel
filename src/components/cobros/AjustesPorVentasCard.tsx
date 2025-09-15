@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 /* LocalStorage keys */
-// const LS_MOVS = "app_movimientos";
+const LS_MOVS = "app_movimientos";
 const TOUCH_MOVS = "__touch_movs";
 
 /* Montos */
@@ -45,8 +45,10 @@ export default function AjustesPorVentasCard() {
 
   /* @MB-AJUSTES-CALC */
   const { total, detalle } = useMemo(() => {
-    // Ya no usamos localStorage - los datos vienen de Supabase
-    const movs: Array<{ tipo?: string; equipoEtiqueta?: string; fechaISO?: string; id?: string; pagado?: boolean }> = [];
+    let movs: Array<{ tipo?: string; equipoEtiqueta?: string; fechaISO?: string; id?: string; pagado?: boolean }> = [];
+    try {
+      movs = JSON.parse(localStorage.getItem(LS_MOVS) || "[]");
+    } catch {}
 
     const start = periodStartFromResetDay(new Date(), RESET_DAY);
     let nanoCount = 0;
