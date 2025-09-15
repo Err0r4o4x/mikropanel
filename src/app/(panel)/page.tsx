@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo } from "react";
 import { Activity, DollarSign, Users, MapPin, PiggyBank, Wrench } from "lucide-react";
-import { getCurrentUser, isAdminUser } from "@/lib/admin";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { isAdminUser } from "@/lib/admin";
 import { useClientes, useZonas } from "@/hooks/useSupabaseData";
 import { useTarifas } from "@/hooks/useTarifas";
 
@@ -15,25 +16,35 @@ const MARGIN_STD = 3.75;
 const MARGIN_PREMIUM = 5.25;
 
 export default function DashboardPage() {
+  // Usuario actual desde BD
+  const { user, isLoading: userLoading } = useCurrentUser();
+  
   // Datos directos de Supabase
   const [zonas, , zonasLoading] = useZonas();
   const [tarifas, , tarifasLoading] = useTarifas({});
   const [clientes, , clientesLoading] = useClientes();
-  const [isAdmin, setIsAdmin] = useState(false);
   
   // Estado de carga combinado
-  const isLoading = zonasLoading || tarifasLoading || clientesLoading;
-
+  const isLoading = userLoading || zonasLoading || tarifasLoading || clientesLoading;
+  
   // ¿Eres admin?
+  const isAdmin = isAdminUser(user);
+  
+  // Debug: Log de datos cargados
   useEffect(() => {
-    const update = () => setIsAdmin(isAdminUser(getCurrentUser()));
-    update();
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "app_user") update();
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+    console.log('🔍 [DASHBOARD] Estado de carga:', {
+      userLoading,
+      zonasLoading,
+      tarifasLoading,
+      clientesLoading,
+      isLoading,
+      zonasCount: zonas.length,
+      tarifasCount: Object.keys(tarifas).length,
+      clientesCount: clientes.length,
+      user,
+      isAdmin
+    });
+  }, [userLoading, zonasLoading, tarifasLoading, clientesLoading, isLoading, zonas.length, tarifas, clientes.length, user, isAdmin]);
 
   // Los datos se cargan automáticamente con hooks de Supabase
 

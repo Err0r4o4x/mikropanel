@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Home, Users, Boxes, Wallet, Receipt, Settings, Truck, Inbox } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getCurrentUser, isAdminUser, getRole } from "@/lib/admin";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { isAdminUser } from "@/lib/admin";
 import type { Role } from "@/lib/admin";
 
 /* ========= Helpers de UI ========= */
@@ -34,12 +35,10 @@ function roleChipClasses(role: string) {
 }
 
 /* ========= Cobranza helpers ========= */
-const LS_CLIENTES = "app_clientes";
-const LS_COBROS_MES = "app_cobros_mes";
-const LS_FORCE_COBRANZA = "app_force_cobranza"; // bandera para pruebas (Iniciar cobro)
+// Ya no usamos localStorage - los datos vienen de Supabase
 
 /* ========= Envíos helpers ========= */
-const LS_ENVIOS = "app_envios"; // lista de envíos (en_camino | disponible | recogido)
+// Ya no usamos localStorage - los datos vienen de Supabase
 
 // function monthKey(d: Date | string = new Date()) {
 //   const dt = typeof d === "string" ? new Date(d) : d;
@@ -55,13 +54,14 @@ function shouldShowCobranzaForNonAdmin(): boolean {
 export default function Sidebar() {
   const pathname = usePathname();
 
-  // Usuario/rol
+  // Usuario/rol desde BD
+  const { user, isLoading: userLoading } = useCurrentUser();
   const [checked, setChecked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userName, setUserName] = useState<string>("");
   const [role, setRole] = useState<Role | "">("");
 
-  // Visibilidad “Cobranza”
+  // Visibilidad "Cobranza"
   const [showCobranza, setShowCobranza] = useState(false);
 
   // Hay envíos pendientes (no recogidos)
@@ -69,60 +69,37 @@ export default function Sidebar() {
 
   /* === Efecto 1: sincroniza usuario/rol === */
   useEffect(() => {
-    const syncUser = () => {
-      const u = getCurrentUser();
-      setIsAdmin(isAdminUser(u));
-      setUserName(titleCase(u?.username ?? "")); // nombre con mayúsculas
-      setRole(getRole());
-      setChecked(true);
-    };
-    syncUser();
+    if (userLoading) return;
 
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === "app_user") syncUser();
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+    const admin = isAdminUser(user);
+    const userRole = user?.rol as Role || "";
+    
+    console.log('🔍 [SIDEBAR] Usuario actual:', user);
+    console.log('🔍 [SIDEBAR] Es admin:', admin);
+    console.log('🔍 [SIDEBAR] Rol:', userRole);
+    
+    setIsAdmin(admin);
+    setUserName(titleCase(user?.username ?? "")); // nombre con mayúsculas
+    setRole(userRole);
+    setChecked(true);
+  }, [user, userLoading]);
 
-  /* === Efecto 2: calcula visibilidad de “Cobranza” === */
+  /* === Efecto 2: calcula visibilidad de "Cobranza" === */
   useEffect(() => {
-    const recomputeCobranza = () => {
-      const u = getCurrentUser();
-      const admin = isAdminUser(u);
-      setShowCobranza(admin ? true : shouldShowCobranzaForNonAdmin());
-    };
-    recomputeCobranza();
+    if (userLoading) return;
 
-    const onStorage = (e: StorageEvent) => {
-      if (
-        e.key === LS_COBROS_MES ||
-        e.key === LS_CLIENTES ||
-        e.key === LS_FORCE_COBRANZA ||
-        e.key === "app_user"
-      ) {
-        recomputeCobranza();
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+    const admin = isAdminUser(user);
+    setShowCobranza(admin ? true : shouldShowCobranzaForNonAdmin());
+  }, [user, userLoading]);
 
   /* === Efecto 3: detecta si hay envíos pendientes === */
   useEffect(() => {
-    const recomputeEnvios = () => {
-      // Ya no usamos localStorage - los datos vienen de Supabase
-      const pending = false; // Simplificado por ahora
-      setHasPendingEnvios(Boolean(pending));
-    };
-    recomputeEnvios();
+    if (userLoading) return;
 
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_ENVIOS) recomputeEnvios();
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+    // Ya no usamos localStorage - los datos vienen de Supabase
+    const pending = false; // Simplificado por ahora
+    setHasPendingEnvios(Boolean(pending));
+  }, [userLoading]);
 
   /* === Menú según permisos === */
   const isEnviosUser = role === "owner" || role === "admin" || role === "envios";
