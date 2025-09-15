@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, CheckCircle2 } from "lucide-react";
-import { getCurrentUser, isAdminUser } from "@/lib/admin";
+import { isAdminUser } from "@/lib/admin";
 import { useClientes, useZonas } from "@/hooks/useSupabaseData";
 import { useTarifas } from "@/hooks/useTarifas";
 

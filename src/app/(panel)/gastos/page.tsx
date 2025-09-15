@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { getRole } from "@/lib/admin";
-import { getCurrentUser, isAdminUser } from "@/lib/admin";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { isAdminUser } from "@/lib/admin";
 import { useGastos } from "@/hooks/useSupabaseData";
 import {
   ResponsiveContainer,
@@ -59,7 +60,8 @@ export default function GastosPage() {
   const [monto, setMonto] = useState("");
   const [formErr, setFormErr] = useState<string | null>(null);
 
-  const [isAdmin, setIsAdmin] = useState(false);
+  const { user } = useCurrentUser();
+  const isAdmin = isAdminUser(user);
   useEffect(() => {
     const upd = () => setIsAdmin(isAdminUser(getCurrentUser()));
     upd();

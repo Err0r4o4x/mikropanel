@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { Plus, Trash2, Pencil, Search } from "lucide-react";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
 import { getRole } from "@/lib/admin";
 import { useClientes, useZonas } from "@/hooks/useSupabaseData";
 
@@ -80,12 +81,15 @@ type Cliente = {
 
 /* ===== Página ===== */
 export default function UsuariosPage() {
+  // Usuario actual desde BD
+  const { user, isLoading: userLoading } = useCurrentUser();
+  
   // Datos directos de Supabase
   const [clientes, setClientes, clientesLoading] = useClientes();
   const [zonas, , zonasLoading] = useZonas();
 
   // Estado de carga combinado
-  const loaded = !clientesLoading && !zonasLoading;
+  const loaded = !userLoading && !clientesLoading && !zonasLoading;
 
   // ==== Estados de la UI ====
   const [filtro, setFiltro] = useState("");
@@ -116,15 +120,7 @@ export default function UsuariosPage() {
   const [errEditar, setErrEditar] = useState<string | null>(null);
 
   // ==== Roles y permisos ====
-  const [role, setRole] = useState<ReturnType<typeof getRole>>("");
-
-  useEffect(() => {
-    const update = () => {
-      setRole(getRole());
-    };
-    update();
-  }, []);
-
+  const role = user?.rol as ReturnType<typeof getRole> || "";
   const canCreateUsuario = role !== "envios";
   const canEditUsuario = role === "owner" || role === "admin" || role === "tech";
   const canDeleteUsuario = role === "owner" || role === "admin";
@@ -305,7 +301,9 @@ export default function UsuariosPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-sm text-gray-600">Cargando clientes...</p>
+          <p className="text-sm text-gray-600">
+            {userLoading ? "Verificando permisos..." : "Cargando clientes..."}
+          </p>
         </div>
       </div>
     );
