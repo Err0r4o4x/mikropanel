@@ -58,8 +58,9 @@ export default function LoginPage() {
             return;
           }
 
-          // Ya no guardamos en localStorage - los datos se guardan en Supabase
-          console.log('✅ [LOGIN] Token recibido');
+          // Guardar token en localStorage para autenticación
+          localStorage.setItem('auth_token', token);
+          console.log('✅ [LOGIN] Token guardado en localStorage');
 
           // Guardar usuario en localStorage para la UI (sidebar, permisos)
           setCurrentUser({

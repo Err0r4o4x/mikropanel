@@ -43,7 +43,7 @@ export default function EnviosPage() {
   // Estados locales
   const [envios, setEnvios] = useState<Envio[]>([]);
   const [grupos, setGrupos] = useState<Grupo[]>([]);
-  
+
   // Estados de UI
   const [openNew, setOpenNew] = useState(false);
   const [rowsNew, setRowsNew] = useState<{ key: string; display: string; qty: string; checked: boolean }[]>([]);
@@ -110,9 +110,9 @@ export default function EnviosPage() {
     const toSend = rowsNew
       .filter(r => r.checked && Number(r.qty) > 0)
       .map(r => ({ key: r.key, display: r.display, qty: Number(r.qty) }));
-    
+
     if (toSend.length === 0) return;
-    
+
     const u = getCurrentUser();
     const nuevo: Envio = {
       id: crypto.randomUUID(),
@@ -188,7 +188,7 @@ export default function EnviosPage() {
     const next = envios.map(e =>
       e.id === editingId ? { ...e, items: toSend } : e
     );
-    setEnvios(next);
+      setEnvios(next);
     cerrarEditar();
   }
 
@@ -230,13 +230,13 @@ export default function EnviosPage() {
         {/* Botón de nuevo envío */}
         {canCrear && (
           <div className="mb-6">
-            <button
+          <button
               onClick={abrirNuevo}
               className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-            >
-              <Plus className="h-4 w-4" />
+          >
+            <Plus className="h-4 w-4" />
               Nuevo Envío
-            </button>
+          </button>
           </div>
         )}
 
@@ -284,7 +284,7 @@ export default function EnviosPage() {
                             {item.display} x{item.qty}
                           </div>
                         ))}
-                      </div>
+      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -302,54 +302,54 @@ export default function EnviosPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex gap-2">
+            <div className="flex gap-2">
                         {canRecoger && envio.status === "en_camino" && (
-                          <button
+                <button
                             onClick={() => marcarRecogido(envio.id)}
                             className="text-blue-600 hover:text-blue-900"
                             title="Marcar como recogido"
                           >
                             <CheckCheck className="h-4 w-4" />
-                          </button>
-                        )}
+                </button>
+              )}
                         {canRecoger && envio.status === "recogido" && (
-                          <button
+                  <button
                             onClick={() => marcarDisponible(envio.id)}
                             className="text-green-600 hover:text-green-900"
                             title="Marcar como disponible"
                           >
                             <CheckCircle2 className="h-4 w-4" />
-                          </button>
-                        )}
+                </button>
+              )}
                         {canEditar && (
-                          <button
+                  <button
                             onClick={() => abrirEditar(envio)}
                             className="text-yellow-600 hover:text-yellow-900"
-                            title="Editar envío"
-                          >
+                    title="Editar envío"
+                  >
                             <Pencil className="h-4 w-4" />
-                          </button>
+                  </button>
                         )}
                         {canEliminar && (
-                          <button
+                  <button
                             onClick={() => eliminarEnvio(envio.id)}
                             className="text-red-600 hover:text-red-900"
-                            title="Eliminar envío"
-                          >
+                    title="Eliminar envío"
+                  >
                             <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
+                  </button>
+              )}
+            </div>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        </div>
+              </div>
 
         {/* Modal Nuevo Envío */}
-        {openNew && (
+      {openNew && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 w-full max-w-2xl">
               <h2 className="text-xl font-bold mb-4">Nuevo Envío</h2>
@@ -369,7 +369,7 @@ export default function EnviosPage() {
                     <div className="flex-1">
                       <div className="text-sm font-medium text-gray-900">{row.display}</div>
                       <div className="text-sm text-gray-500">Disponibles: {grupos.find(g => g.key === row.key)?.cantidad || 0}</div>
-                    </div>
+    </div>
                     <input
                       type="number"
                       value={row.qty}
@@ -382,9 +382,9 @@ export default function EnviosPage() {
                       min="0"
                       disabled={!row.checked}
                     />
-                  </div>
-                ))}
-              </div>
+          </div>
+        ))}
+      </div>
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={cerrarNuevo}
@@ -398,9 +398,9 @@ export default function EnviosPage() {
                 >
                   Crear Envío
                 </button>
-              </div>
-            </div>
-          </div>
+    </div>
+      </div>
+    </div>
         )}
 
         {/* Modal Editar Envío */}
@@ -411,8 +411,8 @@ export default function EnviosPage() {
               <div className="space-y-4">
                 {rowsEdit.map((row, idx) => (
                   <div key={idx} className="flex items-center gap-4">
-                    <input
-                      type="checkbox"
+            <input
+              type="checkbox"
                       checked={row.checked}
                       onChange={(e) => {
                         const next = [...rowsEdit];
@@ -423,9 +423,9 @@ export default function EnviosPage() {
                     />
                     <div className="flex-1">
                       <div className="text-sm font-medium text-gray-900">{row.display}</div>
-                    </div>
-                    <input
-                      type="number"
+          </div>
+          <input
+            type="number"
                       value={row.qty}
                       onChange={(e) => {
                         const next = [...rowsEdit];
@@ -438,20 +438,20 @@ export default function EnviosPage() {
                     />
                   </div>
                 ))}
-              </div>
+    </div>
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={cerrarEditar}
                   className="px-4 py-2 text-gray-600 hover:text-gray-800"
                 >
-                  Cancelar
-                </button>
+        Cancelar
+      </button>
                 <button
                   onClick={guardarEdicion}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
                 >
                   Guardar Cambios
-                </button>
+      </button>
               </div>
             </div>
           </div>
