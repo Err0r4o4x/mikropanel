@@ -2,14 +2,22 @@
 
 // Función para obtener el token del localStorage
 function getAuthToken(): string | null {
-  // Ya no usamos localStorage - los datos vienen de Supabase
-  return null;
+  if (typeof window === 'undefined') return null;
+  
+  // Obtener token del localStorage (donde lo guarda el login)
+  const token = localStorage.getItem('auth_token');
+  return token;
 }
 
 // Función para limpiar el token y redirigir al login
 function clearAuthAndRedirect() {
-  // Ya no usamos localStorage - los datos se guardan en Supabase
   if (typeof window === 'undefined') return;
+  
+  // Limpiar token del localStorage
+  localStorage.removeItem('auth_token');
+  localStorage.removeItem('app_user');
+  
+  // Redirigir al login
   window.location.href = '/login';
 }
 
