@@ -52,8 +52,7 @@ export function useSupabaseData<T extends { id: string }>(
       setError(null);
       console.log(`🔍 [SUPABASE-DATA] Actualizando ${tableName}: ${newData.length} items`);
       
-      // Actualizar estado local inmediatamente para UI responsiva
-      setData(newData);
+      // NO actualizar UI hasta confirmar éxito en BD
       
       // Obtener datos actuales de la BD para comparar
       const { data: currentData } = await supabase
@@ -113,6 +112,8 @@ export function useSupabaseData<T extends { id: string }>(
         }
       }
       
+      // ✅ SOLO actualizar UI DESPUÉS de confirmar éxito en BD
+      setData(newData);
       console.log(`✅ [SUPABASE-DATA] ${tableName} actualizado exitosamente`);
       
     } catch (err) {
