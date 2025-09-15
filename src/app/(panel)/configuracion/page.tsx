@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { getCurrentUser, isAdminUser } from "@/lib/admin";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { isAdminUser } from "@/lib/admin";
 import { useZonas } from "@/hooks/useSupabaseData";
 import { useTarifas } from "@/hooks/useTarifas";
 
@@ -34,11 +35,7 @@ const TARIFA_BASE: Record<string, number> = {
 
 export default function ConfiguracionPage() {
   const router = useRouter();
-
-  /** Guard: solo admin */
-  useEffect(() => {
-    if (!isAdminUser(getCurrentUser())) router.replace("/");
-  }, [router]);
+  const { user, isLoading: userLoading } = useCurrentUser();
 
   /** ===== Tarifas ===== */
   const [zonas, , zonasLoading] = useZonas();
@@ -46,6 +43,21 @@ export default function ConfiguracionPage() {
   const [tarifasLocal, setTarifasLocal] = useState<Record<string, number>>({});
   const [statusTarifas, setStatusTarifas] = useState<string | null>(null);
   
+  /** ===== Inventario (cantidad + precio) ===== */
+  const [equipos, setEquipos] = useState<Equipo[]>([]);
+  const [statusInv, setStatusInv] = useState<string | null>(null);
+  const [errInv, setErrInv] = useState<string | null>(null);
+
+  /** Filas editables */
+  type RowInv = { key: string; display: string; qty: string; price: string; asignadas: number };
+  const [rowsInv, setRowsInv] = useState<RowInv[]>([]);
+
+  /** Guard: solo admin */
+  useEffect(() => {
+    if (userLoading) return;
+    if (!isAdminUser(user)) router.replace("/");
+  }, [router, user, userLoading]);
+
   // Sincronizar tarifas de DB con estado local
   useEffect(() => {
     setTarifasLocal(tarifasDB);
@@ -58,6 +70,69 @@ export default function ConfiguracionPage() {
     () => zonas.slice().sort((a, b) => a.nombre.localeCompare(b.nombre)),
     [zonas]
   );
+
+  /** Agrupar por etiqueta (placeholder NO suma cantidad) */
+  type Grupo = {
+    key: string;
+    display: string;
+    cantidad: number;   // << SOLO disponibles
+    asignadas: number;  // informativo
+    precioUSD?: number; // último precio conocido (no vendidas o placeholder)
+  };
+
+  const grupos = useMemo<Grupo[]>(() => {
+    const map = new Map<string, Grupo>();
+    for (const e of equipos) {
+      const key = e.etiqueta.trim().toLowerCase();
+      const display = e.etiqueta.trim();
+      if (!map.has(key)) {
+        map.set(key, { key, display, cantidad: 0, asignadas: 0, precioUSD: e.precio_usd });
+      }
+      const g = map.get(key)!;
+
+      // el marcador no suma cantidad
+      if (e.placeholder) {
+        if (g.precioUSD == null && e.precio_usd != null) g.precioUSD = e.precio_usd;
+        continue;
+      }
+
+      // SOLO contamos disponibles como stock
+      if (e.estado_tipo === "disponible") g.cantidad += 1;
+
+      // contamos asignadas por separado (solo informativo)
+      if (e.estado_tipo === "asignado") g.asignadas += 1;
+
+      // guarda último precio conocido en no vendidas
+      if (e.estado_tipo !== "vendido" && typeof e.precio_usd === "number") {
+        g.precioUSD = e.precio_usd;
+      }
+    }
+    return Array.from(map.values()).sort((a, b) => a.display.localeCompare(b.display));
+  }, [equipos]);
+
+  useEffect(() => {
+    setRowsInv(
+      grupos.map((g) => ({
+        key: g.key,
+        display: g.display,
+        qty: String(g.cantidad),
+        price: g.precioUSD != null ? String(g.precioUSD) : "",
+        asignadas: g.asignadas,
+      }))
+    );
+  }, [grupos]);
+
+  // Mostrar loading mientras se verifica el usuario
+  if (userLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Verificando permisos...</p>
+        </div>
+      </div>
+    );
+  }
 
   function setTarifa(id: string, value: string) {
     const n = Number(value);
@@ -78,71 +153,9 @@ export default function ConfiguracionPage() {
     }
   }
 
-  /** ===== Inventario (cantidad + precio) ===== */
-  const [equipos, setEquipos] = useState<Equipo[]>([]);
-  const [statusInv, setStatusInv] = useState<string | null>(null);
-  const [errInv, setErrInv] = useState<string | null>(null);
-
   // Ya no usamos localStorage - los datos vienen de Supabase
-
   // Ya no guardamos en localStorage - los datos se guardan en Supabase
-
   // Ya no escuchamos eventos de localStorage - los datos vienen de Supabase
-
-  /** Agrupar por etiqueta (placeholder NO suma cantidad) */
-type Grupo = {
-  key: string;
-  display: string;
-  cantidad: number;   // << SOLO disponibles
-  asignadas: number;  // informativo
-  precioUSD?: number; // último precio conocido (no vendidas o placeholder)
-};
-
-const grupos = useMemo<Grupo[]>(() => {
-  const map = new Map<string, Grupo>();
-  for (const e of equipos) {
-    const key = e.etiqueta.trim().toLowerCase();
-    const display = e.etiqueta.trim();
-    if (!map.has(key)) {
-      map.set(key, { key, display, cantidad: 0, asignadas: 0, precioUSD: e.precio_usd });
-    }
-    const g = map.get(key)!;
-
-    // el marcador no suma cantidad
-    if (e.placeholder) {
-      if (g.precioUSD == null && e.precio_usd != null) g.precioUSD = e.precio_usd;
-      continue;
-    }
-
-    // SOLO contamos disponibles como stock
-    if (e.estado_tipo === "disponible") g.cantidad += 1;
-
-    // contamos asignadas por separado (solo informativo)
-    if (e.estado_tipo === "asignado") g.asignadas += 1;
-
-    // guarda último precio conocido en no vendidas
-    if (e.estado_tipo !== "vendido" && typeof e.precio_usd === "number") {
-      g.precioUSD = e.precio_usd;
-    }
-  }
-  return Array.from(map.values()).sort((a, b) => a.display.localeCompare(b.display));
-}, [equipos]);
-
-  /** Filas editables */
-  type RowInv = { key: string; display: string; qty: string; price: string; asignadas: number };
-  const [rowsInv, setRowsInv] = useState<RowInv[]>([]);
-
-  useEffect(() => {
-    setRowsInv(
-      grupos.map((g) => ({
-        key: g.key,
-        display: g.display,
-        qty: String(g.cantidad),
-        price: g.precioUSD != null ? String(g.precioUSD) : "",
-        asignadas: g.asignadas,
-      }))
-    );
-  }, [grupos]);
 
   /** Aplicar cambios: agrega/quita unidades, actualiza precio y crea placeholder si qty=0 */
   function applyInventario() {

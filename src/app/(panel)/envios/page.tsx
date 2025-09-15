@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { getRole, PERM, getCurrentUser, isAdminUser } from "@/lib/admin";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { getRole, PERM, isAdminUser } from "@/lib/admin";
 import { Plus, CheckCheck, CheckCircle2, Pencil, Trash2 } from "lucide-react";
 import { useEquipos } from "@/hooks/useSupabaseData";
 
@@ -37,6 +38,9 @@ type Grupo = {
 
 /* ===== Página ===== */
 export default function EnviosPage() {
+  // Usuario actual desde BD
+  const { user } = useCurrentUser();
+  
   // Datos directos de Supabase
   const [equipos, , equiposLoading] = useEquipos();
   
@@ -52,17 +56,8 @@ export default function EnviosPage() {
   const [rowsEdit, setRowsEdit] = useState<{ key: string; display: string; qty: string; checked: boolean }[]>([]);
 
   // Roles y permisos
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [role, setRole] = useState<ReturnType<typeof getRole>>("");
-
-  useEffect(() => {
-    const update = () => {
-      setIsAdmin(isAdminUser(getCurrentUser()));
-      setRole(getRole());
-    };
-    update();
-  }, []);
-
+  const isAdmin = isAdminUser(user);
+  const role = user?.rol as ReturnType<typeof getRole> || "";
   const canCrear = PERM.crearEnvio(role);
   const canRecoger = PERM.recogerEnvio(role);
   const canEditar = isAdmin;
@@ -113,11 +108,10 @@ export default function EnviosPage() {
 
     if (toSend.length === 0) return;
 
-    const u = getCurrentUser();
     const nuevo: Envio = {
       id: crypto.randomUUID(),
       created_iso: new Date().toISOString(),
-      created_by: (u?.username || "admin").toString(),
+      created_by: (user?.username || "admin").toString(),
       items: toSend,
       status: "en_camino",
       inventory_added: false,

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { getCurrentUser, getRole } from "@/lib/admin";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { getRole } from "@/lib/admin";
 import { Plus, Trash2, Download, Upload, Calendar } from "lucide-react";
 
 /* ===== Tipos ===== */
@@ -42,6 +43,9 @@ type EnvioMov = {
 
 /* ===== Página ===== */
 export default function CobrosPage() {
+  // Usuario actual desde BD
+  const { user } = useCurrentUser();
+  
   // Estados locales
   const [ajustes, setAjustes] = useState<Ajuste[]>([]);
   const [cortes, setCortes] = useState<Corte[]>([]);
@@ -52,14 +56,7 @@ export default function CobrosPage() {
   const [loading, setLoading] = useState(true);
   
   // Roles y permisos
-  const [role, setRole] = useState<ReturnType<typeof getRole>>("");
-
-  useEffect(() => {
-    const update = () => {
-      setRole(getRole());
-    };
-    update();
-  }, []);
+  const role = user?.rol as ReturnType<typeof getRole> || "";
 
   const canCreateAjuste = role === "owner" || role === "admin" || role === "tech";
   const canDeleteAjuste = role === "owner" || role === "admin";
@@ -82,7 +79,7 @@ export default function CobrosPage() {
       amount: 0,
       label: "Nuevo ajuste",
       createdISO: new Date().toISOString(),
-      actor: getCurrentUser()?.username || "admin",
+      actor: user?.username || "admin",
     };
     
     setAjustes(prev => [nuevo, ...prev]);
@@ -108,7 +105,7 @@ export default function CobrosPage() {
           ym,
       total,
           createdISO: new Date().toISOString(),
-      actor: getCurrentUser()?.username || "admin",
+      actor: user?.username || "admin",
     };
     
     setCortes(prev => [...prev, nuevo].sort((a, b) => a.ym.localeCompare(b.ym)));

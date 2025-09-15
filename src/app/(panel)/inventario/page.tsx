@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, Package2 } from "lucide-react";
-import { getCurrentUser, isAdminUser, getRole, PERM } from "@/lib/admin";
+import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { isAdminUser, getRole, PERM } from "@/lib/admin";
 import { useClientes, useEquipos, useMovimientos } from "@/hooks/useSupabaseData";
 
 /* ===== Helpers ===== */
@@ -70,13 +71,16 @@ type Movimiento = MovimientoVenta | MovimientoAsignacion;
 
 /* ===== Página ===== */
 export default function InventarioPage() {
+  // Usuario actual desde BD
+  const { user, isLoading: userLoading } = useCurrentUser();
+  
   // Datos directos de Supabase
   const [equipos, setEquipos, equiposLoading] = useEquipos();
   const [movs, setMovs, movsLoading] = useMovimientos();
   const [clientes, , clientesLoading] = useClientes();
   
   // Estado de carga combinado
-  const loaded = !equiposLoading && !movsLoading && !clientesLoading;
+  const loaded = !userLoading && !equiposLoading && !movsLoading && !clientesLoading;
 
   // ==== Ganancia manual para VENTAS ====
   const dlgGananciaRef = useRef<HTMLDialogElement | null>(null);
@@ -124,33 +128,18 @@ export default function InventarioPage() {
   }
 
   // Roles / permisos
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [role, setRole] = useState<ReturnType<typeof getRole>>("");
-  // const canCreateUsuario = role !== "envios"; // envios NO puede crear usuarios (no usado)
-  useEffect(() => {
-    const update = () => {
-      setIsAdmin(isAdminUser(getCurrentUser()));
-      setRole(getRole());
-      // Permisos calculados pero no usados en este scope
-      // const canNewEquipo     = PERM.newEquipo(role);          // solo admin
-      // const canRegistrarMov  = PERM.registrarMov(role);       // admin | tech | envios
-      // const canDeleteEquipo  = PERM.deleteEquipo(role);       // solo admin
-      // const canDeleteMov     = role === "admin";              // borrar movimientos = solo admin
-    };
-    update();
-    // Ya no escuchamos eventos de localStorage
-  }, [role]);
-
+  const isAdmin = isAdminUser(user);
+  const role = user?.rol as ReturnType<typeof getRole> || "";
   const canNewEquipo = PERM.newEquipo(role);
   const canRegistrarMov = PERM.registrarMov(role);
 
   // Los datos se cargan automáticamente con hooks de Supabase
 
   /* ===== Ajuste auto +15 cuando Pagado = true (router asignado) ===== */
-  function ensureAutoAjusteRouter15(_movId: string, _fechaISO: string) {
+  function ensureAutoAjusteRouter15() {
     // Función eliminada - ya no usamos localStorage
   }
-  function removeAutoAjusteRouter15(_movId: string) {
+  function removeAutoAjusteRouter15() {
     // Función eliminada - ya no usamos localStorage
   }
 
@@ -272,8 +261,7 @@ export default function InventarioPage() {
     if (!canRegistrarMov) return;
 
     const now = new Date().toISOString();
-    const u = getCurrentUser();
-    const actor = (u?.username || u?.name || "invitado").toString().toLowerCase();
+    const actor = (user?.username || user?.name || "invitado").toString().toLowerCase();
 
     if (mov.tipo === "venta") {
       const qty = Math.max(1, Math.floor(Number(movQty || "1")));
@@ -467,7 +455,9 @@ export default function InventarioPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Cargando inventario...</p>
+          <p className="text-gray-600">
+            {userLoading ? "Verificando permisos..." : "Cargando inventario..."}
+          </p>
         </div>
       </div>
     );
