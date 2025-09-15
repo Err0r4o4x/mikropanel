@@ -350,7 +350,7 @@ export default function InventarioPage() {
 
       // Si se marcó pagado en el modal y es router -> crea el +15
       if (isRouterName(unit.etiqueta) && routerPagado) {
-        ensureAutoAjusteRouter15(movId, now);
+        ensureAutoAjusteRouter15();
       }
       // Switch es gratis: no se crea ajuste.
     }
@@ -406,7 +406,7 @@ export default function InventarioPage() {
     setMovs(nextMovs);
 
     // Eliminar ajustes vinculados (manual/auto) de ese movId
-    removeAutoAjusteRouter15(m.id);
+    removeAutoAjusteRouter15();
     try {
       await setEquipos(nextEquipos);
       await setMovs(nextMovs);
@@ -696,8 +696,8 @@ export default function InventarioPage() {
                         );
                         setMovs(nextMovs);
                         // Función simplificada - ya no usamos localStorage
-                        if (checked) ensureAutoAjusteRouter15(m.id, m.fecha);
-                        else removeAutoAjusteRouter15(m.id);
+                        if (checked) ensureAutoAjusteRouter15();
+                        else removeAutoAjusteRouter15();
                       }}
                       title="¿El cliente ya pagó el router? (sumará +15)"
                     />

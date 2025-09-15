@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { getRole } from "@/lib/admin";
+import { getRole, isAdminUser, getCurrentUser } from "@/lib/admin";
 import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { isAdminUser } from "@/lib/admin";
 import { useGastos } from "@/hooks/useSupabaseData";
 import {
   ResponsiveContainer,
@@ -62,13 +61,6 @@ export default function GastosPage() {
 
   const { user } = useCurrentUser();
   const isAdmin = isAdminUser(user);
-  useEffect(() => {
-    const upd = () => setIsAdmin(isAdminUser(getCurrentUser()));
-    upd();
-    const onStorage = (e: StorageEvent) => { if (e.key === "app_user") upd(); };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
 
   // Los datos se cargan automáticamente con hooks de Supabase
 
