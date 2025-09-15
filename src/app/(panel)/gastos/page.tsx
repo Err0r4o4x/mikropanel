@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { getRole, isAdminUser, getCurrentUser } from "@/lib/admin";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
+import { getRole } from "@/lib/admin";
+import { getCurrentUser, isAdminUser } from "@/lib/admin";
 import { useGastos } from "@/hooks/useSupabaseData";
 import {
   ResponsiveContainer,
@@ -16,7 +16,8 @@ import {
   Legend,
 } from "recharts";
 
-/* ===== Funciones de datos ===== */
+/* ===== LS keys ===== */
+const LS_AJUSTES = "app_cobros_ajustes";
 
 /* ===== Helpers ===== */
 const currency = (n: number) =>
@@ -59,8 +60,14 @@ export default function GastosPage() {
   const [monto, setMonto] = useState("");
   const [formErr, setFormErr] = useState<string | null>(null);
 
-  const { user } = useCurrentUser();
-  const isAdmin = isAdminUser(user);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    const upd = () => setIsAdmin(isAdminUser(getCurrentUser()));
+    upd();
+    const onStorage = (e: StorageEvent) => { if (e.key === "app_user") upd(); };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   // Los datos se cargan automáticamente con hooks de Supabase
 
@@ -72,12 +79,18 @@ export default function GastosPage() {
 
   // Helpers ajustes
   const readAjustes = (): Ajuste[] => {
-    // Ya no usamos localStorage - los datos vienen de Supabase
-    return [];
+    try {
+      const raw = localStorage.getItem(LS_AJUSTES);
+      const list = raw ? JSON.parse(raw) : [];
+      return Array.isArray(list) ? list : [];
+    } catch { return []; }
   };
   const writeAjustes = (list: Ajuste[]) => {
-    // Ya no guardamos en localStorage - los datos se guardan en Supabase
-    console.log("Guardando ajustes:", list);
+    try { localStorage.setItem(LS_AJUSTES, JSON.stringify(list)); } catch {}
+    // “despertar” Cobros en este mismo tab:
+    document.dispatchEvent(new CustomEvent("ajustes-changed"));
+    // y en otros tabs:
+    window.dispatchEvent(new StorageEvent("storage", { key: LS_AJUSTES }));
   };
 
   async function submitGasto(e?: React.FormEvent) {

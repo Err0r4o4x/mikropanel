@@ -3,22 +3,21 @@
 // Función para obtener el token del localStorage
 function getAuthToken(): string | null {
   if (typeof window === 'undefined') return null;
-  
-  // Obtener token del localStorage (donde lo guarda el login)
-  const token = localStorage.getItem('auth_token');
-  return token;
+  try {
+    return localStorage.getItem('auth_token');
+  } catch {
+    return null;
+  }
 }
 
 // Función para limpiar el token y redirigir al login
 function clearAuthAndRedirect() {
   if (typeof window === 'undefined') return;
-  
-  // Limpiar token del localStorage
-  localStorage.removeItem('auth_token');
-  localStorage.removeItem('app_user');
-  
-  // Redirigir al login
-  window.location.href = '/login';
+  try {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('app_user');
+    window.location.href = '/login';
+  } catch {}
 }
 
 // Wrapper para fetch que agrega Authorization header automáticamente

@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, CheckCircle2 } from "lucide-react";
-import { isAdminUser, getCurrentUser } from "@/lib/admin";
+import { getCurrentUser, isAdminUser } from "@/lib/admin";
 import { useClientes, useZonas } from "@/hooks/useSupabaseData";
 import { useTarifas } from "@/hooks/useTarifas";
 
-/* ===== Funciones de datos ===== */
+/* ===== Storage keys ===== */
+const LS_COBROS_MES = "app_cobros_mes";
+const LS_FORCE_COBRANZA = "app_force_cobranza";
 
 type Zona = { id: string; nombre: string };
 
@@ -95,14 +97,19 @@ export default function CobranzaPage() {
     if (isLoading || clientes.length === 0) return;
     
     try {
-      // Ya no usamos localStorage - los datos vienen de Supabase
-      const forced = false; // Simplificado
-      let lote: CobroItem[] = [];
+      // Lote del mes
+      const yyyymm = monthKey();
+      const rawAll = localStorage.getItem(LS_COBROS_MES);
+      const all = rawAll ? JSON.parse(rawAll) : {};
+      const forced = localStorage.getItem(LS_FORCE_COBRANZA) === "1";
+
+      let lote: CobroItem[] = Array.isArray(all?.[yyyymm]) ? all[yyyymm] : [];
 
       // si no existe lote o está forzado → reconstruimos con todos pagado=false
       if (!lote.length || forced) {
         lote = buildBatch(clientes, tarifas);
-        // Ya no guardamos en localStorage - los datos se guardan en Supabase
+        all[yyyymm] = lote;
+        localStorage.setItem(LS_COBROS_MES, JSON.stringify(all));
       }
 
       setItems(lote);
@@ -110,7 +117,20 @@ export default function CobranzaPage() {
       setItems([]);
     }
 
-    // Ya no escuchamos eventos de localStorage - los datos vienen de Supabase
+    // Escuchar cambios desde otras pestañas (cuando marcan cobros, etc.)
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === LS_COBROS_MES) {
+        try {
+          const yyyymm = monthKey();
+          const raw = e.newValue;
+          const all = raw ? JSON.parse(raw) : {};
+          const lote = Array.isArray(all?.[yyyymm]) ? all[yyyymm] : [];
+          setItems(lote);
+        } catch {}
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, [isLoading, clientes, tarifas]);
 
   // Agrupar/filtrar
@@ -148,14 +168,22 @@ export default function CobranzaPage() {
     return { total, cobrados, monto, montoCobrados, allPaid: total > 0 && total === cobrados };
   }, [items]);
 
-  function persist() {
-    // Ya no guardamos en localStorage - los datos se guardan en Supabase
+  function persist(next: CobroItem[]) {
+    try {
+      const yyyymm = monthKey();
+      const rawAll = localStorage.getItem(LS_COBROS_MES);
+      const all = rawAll ? JSON.parse(rawAll) : {};
+      all[yyyymm] = next;
+      localStorage.setItem(LS_COBROS_MES, JSON.stringify(all));
+      // Notificar a Sidebar/otras pestañas
+      window.dispatchEvent(new StorageEvent("storage", { key: LS_COBROS_MES, newValue: JSON.stringify(all) }));
+    } catch {}
   }
 
   function setPagado(id: string, val: boolean) {
     setItems((prev) => {
       const next = prev.map((x) => (x.id === id ? { ...x, pagado: val } : x));
-      persist();
+      persist(next);
       return next;
     });
   }
@@ -163,7 +191,10 @@ export default function CobranzaPage() {
   // Cuando TODOS están pagados -> limpiar forzado, avisar y (si no admin) redirigir
   useEffect(() => {
     if (!totales.allPaid) return;
-    // Ya no usamos localStorage - los datos se guardan en Supabase
+    try {
+      localStorage.removeItem(LS_FORCE_COBRANZA); // para que tech/envíos ya no vean "Cobranza"
+      window.dispatchEvent(new StorageEvent("storage", { key: LS_FORCE_COBRANZA }));
+    } catch {}
     setDoneMsg("¡Todos los usuarios han sido registrados, muchas gracias!");
     if (!isAdmin) {
       const t = setTimeout(() => router.replace("/"), 2200);

@@ -2,9 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Plus, Trash2, Package2 } from "lucide-react";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { isAdminUser, getRole, PERM } from "@/lib/admin";
+import { getCurrentUser, isAdminUser, getRole, PERM } from "@/lib/admin";
 import { useClientes, useEquipos, useMovimientos } from "@/hooks/useSupabaseData";
+
+/* ===== LocalStorage keys ===== */
+const LS_MOVS = "app_movimientos";
+const LS_AJUSTES_COBROS = "app_cobros_ajustes";
+const TOUCH_MOVS = "__touch_movs";
 
 /* ===== Helpers ===== */
 function prettyName(s: string) {
@@ -20,10 +24,10 @@ const isRouterName = (name?: string) => (name ?? "").trim().toLowerCase() === "r
 const isSwitchName = (name?: string) => (name ?? "").trim().toLowerCase() === "switch";
 // Solo Router o Switch se pueden asignar
 const isAssignable = (name?: string) => isRouterName(name) || isSwitchName(name);
-// const monthKey = (d: Date | string = new Date()) => {
-//   const dt = typeof d === "string" ? new Date(d) : d;
-//   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
-// };
+const monthKey = (d: Date | string = new Date()) => {
+  const dt = typeof d === "string" ? new Date(d) : d;
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+};
 
 /* ===== Tipos ===== */
 type Equipo = {
@@ -56,31 +60,28 @@ type MovimientoAsignacion = MovimientoBase & {
 };
 type Movimiento = MovimientoVenta | MovimientoAsignacion;
 
-// type AjusteCobro = {
-//   id: string;
-//   yyyymm: string;
-//   amount: number;
-//   label: string;
-//   createdISO: string;
-//   actor?: string;
-//   ref?: { movId?: string; equipo?: string; type?: "manual" | "auto" };
-// };
+type AjusteCobro = {
+  id: string;
+  yyyymm: string;
+  amount: number;
+  label: string;
+  createdISO: string;
+  actor?: string;
+  ref?: { movId?: string; equipo?: string; type?: "manual" | "auto" };
+};
 
 /* ===== Regla de negocio ===== */
-// const AJUSTE_ROUTER_PAGADO_USD = 15;
+const AJUSTE_ROUTER_PAGADO_USD = 15;
 
 /* ===== Página ===== */
 export default function InventarioPage() {
-  // Usuario actual desde BD
-  const { user, isLoading: userLoading } = useCurrentUser();
-  
   // Datos directos de Supabase
   const [equipos, setEquipos, equiposLoading] = useEquipos();
   const [movs, setMovs, movsLoading] = useMovimientos();
   const [clientes, , clientesLoading] = useClientes();
   
   // Estado de carga combinado
-  const loaded = !userLoading && !equiposLoading && !movsLoading && !clientesLoading;
+  const loaded = !equiposLoading && !movsLoading && !clientesLoading;
 
   // ==== Ganancia manual para VENTAS ====
   const dlgGananciaRef = useRef<HTMLDialogElement | null>(null);
@@ -92,13 +93,28 @@ export default function InventarioPage() {
   const [manualGainSet, setManualGainSet] = useState<Set<string>>(new Set());
 
   function reloadManualGains() {
-    // Función eliminada - ya no usamos localStorage
-    setManualGainSet(new Set());
+    try {
+      const raw = localStorage.getItem(LS_AJUSTES_COBROS);
+      if (!raw) { setManualGainSet(new Set()); return; }
+      const list: AjusteCobro[] = JSON.parse(raw) || [];
+      const ids = new Set<string>();
+      for (const a of list) {
+        if (a.ref?.movId && a.ref?.type === "manual") ids.add(a.ref.movId);
+      }
+      setManualGainSet(ids);
+    } catch {
+      setManualGainSet(new Set());
+    }
   }
 
-  // cargar al entrar
+  // cargar al entrar y cuando cambien ajustes en otra pestaña
   useEffect(() => {
     reloadManualGains();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === LS_AJUSTES_COBROS || e.key === TOUCH_MOVS) reloadManualGains();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
   }, []);
 
   function abrirGanancia(m: MovimientoVenta) {
@@ -122,25 +138,95 @@ export default function InventarioPage() {
       return;
     }
 
-    // Función simplificada - ya no usamos localStorage
-    console.log(`Ganancia manual: ${val} para venta ${gananciaTarget.id}`);
-    dlgGananciaRef.current?.close();
+    // evita duplicados por movId/type=manual
+    try {
+      const raw = localStorage.getItem(LS_AJUSTES_COBROS);
+      const curr: AjusteCobro[] = raw ? JSON.parse(raw) : [];
+      const exists = curr.some(a => a.ref?.movId === gananciaTarget.id && a.ref?.type === "manual");
+      if (exists) {
+        setErrGanancia("Esta venta ya tiene una ganancia registrada.");
+        return;
+      }
+
+      const actor = (getCurrentUser()?.username || getCurrentUser()?.name || "admin").toString().toLowerCase();
+      const nuevo: AjusteCobro = {
+        id: `manual-${gananciaTarget.id}`,
+        yyyymm: monthKey(gananciaTarget.fecha),
+        amount: val,
+        label: `Ganancia venta ${gananciaTarget.equipo_etiqueta}`,
+        createdISO: new Date().toISOString(),
+        actor,
+        ref: { movId: gananciaTarget.id, equipo: gananciaTarget.equipo_etiqueta.trim().toLowerCase(), type: "manual" },
+      };
+
+      const next = [...curr, nuevo];
+      localStorage.setItem(LS_AJUSTES_COBROS, JSON.stringify(next));
+      localStorage.setItem(TOUCH_MOVS, String(Date.now())); // despierta Cobros
+      reloadManualGains();
+      dlgGananciaRef.current?.close();
+    } catch {
+      setErrGanancia("No se pudo guardar. Revisa el almacenamiento local.");
+    }
   }
 
   // Roles / permisos
-  const isAdmin = isAdminUser(user);
-  const role = user?.rol as ReturnType<typeof getRole> || "";
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [role, setRole] = useState<ReturnType<typeof getRole>>("");
+  // const canCreateUsuario = role !== "envios"; // envios NO puede crear usuarios (no usado)
+  useEffect(() => {
+    const update = () => {
+      setIsAdmin(isAdminUser(getCurrentUser()));
+      setRole(getRole());
+      // Permisos calculados pero no usados en este scope
+      // const canNewEquipo     = PERM.newEquipo(role);          // solo admin
+      // const canRegistrarMov  = PERM.registrarMov(role);       // admin | tech | envios
+      // const canDeleteEquipo  = PERM.deleteEquipo(role);       // solo admin
+      // const canDeleteMov     = role === "admin";              // borrar movimientos = solo admin
+    };
+    update();
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "app_user") update();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, [role]);
+
   const canNewEquipo = PERM.newEquipo(role);
   const canRegistrarMov = PERM.registrarMov(role);
 
   // Los datos se cargan automáticamente con hooks de Supabase
 
   /* ===== Ajuste auto +15 cuando Pagado = true (router asignado) ===== */
-  function ensureAutoAjusteRouter15() {
-    // Función eliminada - ya no usamos localStorage
+  function ensureAutoAjusteRouter15(movId: string, fechaISO: string) {
+    try {
+      const raw = localStorage.getItem(LS_AJUSTES_COBROS);
+      const list: AjusteCobro[] = raw ? JSON.parse(raw) : [];
+      const exists = list.some(a => a.ref?.movId === movId && a.ref?.type === "auto");
+      if (exists) return;
+
+      const actor = (getCurrentUser()?.username || getCurrentUser()?.name || "admin").toString().toLowerCase();
+      const nuevo: AjusteCobro = {
+        id: `auto-${movId}`,
+        yyyymm: monthKey(fechaISO),
+        amount: AJUSTE_ROUTER_PAGADO_USD,
+        label: "Pago instalación Router (+15)",
+        createdISO: new Date().toISOString(),
+        actor,
+        ref: { movId, equipo: "router", type: "auto" },
+      };
+      const next = [...list, nuevo];
+      localStorage.setItem(LS_AJUSTES_COBROS, JSON.stringify(next));
+      localStorage.setItem(TOUCH_MOVS, String(Date.now()));
+    } catch {}
   }
-  function removeAutoAjusteRouter15() {
-    // Función eliminada - ya no usamos localStorage
+  function removeAutoAjusteRouter15(movId: string) {
+    try {
+      const raw = localStorage.getItem(LS_AJUSTES_COBROS);
+      const list: AjusteCobro[] = raw ? JSON.parse(raw) : [];
+      const next = list.filter(a => !(a.ref?.movId === movId && a.ref?.type === "auto"));
+      localStorage.setItem(LS_AJUSTES_COBROS, JSON.stringify(next));
+      localStorage.setItem(TOUCH_MOVS, String(Date.now()));
+    } catch {}
   }
 
   /* ===== Agrupar por etiqueta ===== */
@@ -261,7 +347,8 @@ export default function InventarioPage() {
     if (!canRegistrarMov) return;
 
     const now = new Date().toISOString();
-    const actor = (user?.username || user?.name || "invitado").toString().toLowerCase();
+    const u = getCurrentUser();
+    const actor = (u?.username || u?.name || "invitado").toString().toLowerCase();
 
     if (mov.tipo === "venta") {
       const qty = Math.max(1, Math.floor(Number(movQty || "1")));
@@ -350,7 +437,7 @@ export default function InventarioPage() {
 
       // Si se marcó pagado en el modal y es router -> crea el +15
       if (isRouterName(unit.etiqueta) && routerPagado) {
-        ensureAutoAjusteRouter15();
+        ensureAutoAjusteRouter15(movId, now);
       }
       // Switch es gratis: no se crea ajuste.
     }
@@ -406,11 +493,15 @@ export default function InventarioPage() {
     setMovs(nextMovs);
 
     // Eliminar ajustes vinculados (manual/auto) de ese movId
-    removeAutoAjusteRouter15();
+    removeAutoAjusteRouter15(m.id);
     try {
       await setEquipos(nextEquipos);
       await setMovs(nextMovs);
-      // Función simplificada - ya no usamos localStorage
+      // Además borra cualquier ajuste manual enlazado a movId (compatibilidad)
+      const raw = localStorage.getItem(LS_AJUSTES_COBROS);
+      const list: AjusteCobro[] = raw ? JSON.parse(raw) : [];
+      const filtered = Array.isArray(list) ? list.filter((a) => a?.ref?.movId !== m.id) : [];
+      localStorage.setItem(LS_AJUSTES_COBROS, JSON.stringify(filtered));
     } catch {}
   };
 
@@ -455,9 +546,7 @@ export default function InventarioPage() {
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">
-            {userLoading ? "Verificando permisos..." : "Cargando inventario..."}
-          </p>
+          <p className="text-gray-600">Cargando inventario...</p>
         </div>
       </div>
     );
@@ -695,9 +784,10 @@ export default function InventarioPage() {
                           x.id === m.id ? ({ ...x, pagado: checked } as Movimiento) : x
                         );
                         setMovs(nextMovs);
-                        // Función simplificada - ya no usamos localStorage
-                        if (checked) ensureAutoAjusteRouter15();
-                        else removeAutoAjusteRouter15();
+                        try { localStorage.setItem(LS_MOVS, JSON.stringify(nextMovs)); } catch {}
+                        localStorage.setItem(TOUCH_MOVS, String(Date.now()));
+                        if (checked) ensureAutoAjusteRouter15(m.id, m.fecha);
+                        else removeAutoAjusteRouter15(m.id);
                       }}
                       title="¿El cliente ya pagó el router? (sumará +15)"
                     />

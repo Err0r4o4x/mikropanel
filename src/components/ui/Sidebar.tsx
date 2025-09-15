@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Home, Users, Boxes, Wallet, Receipt, Settings, Truck, Inbox } from "lucide-react";
 import { useEffect, useState } from "react";
-import { useCurrentUser } from "@/hooks/useCurrentUser";
-import { isAdminUser } from "@/lib/admin";
+import { getCurrentUser, isAdminUser, getRole } from "@/lib/admin";
 import type { Role } from "@/lib/admin";
 
 /* ========= Helpers de UI ========= */
@@ -21,8 +20,6 @@ function titleCase(s: string) {
 }
 function roleChipClasses(role: string) {
   switch (role) {
-    case "owner":
-      return "bg-purple-50 border-purple-200 text-purple-700";
     case "admin":
       return "bg-emerald-50 border-emerald-200 text-emerald-700";
     case "tech":
@@ -35,33 +32,56 @@ function roleChipClasses(role: string) {
 }
 
 /* ========= Cobranza helpers ========= */
-// Ya no usamos localStorage - los datos vienen de Supabase
+const LS_CLIENTES = "app_clientes";
+const LS_COBROS_MES = "app_cobros_mes";
+const LS_FORCE_COBRANZA = "app_force_cobranza"; // bandera para pruebas (Iniciar cobro)
 
 /* ========= Envíos helpers ========= */
-// Ya no usamos localStorage - los datos vienen de Supabase
+const LS_ENVIOS = "app_envios"; // lista de envíos (en_camino | disponible | recogido)
 
-// function monthKey(d: Date | string = new Date()) {
-//   const dt = typeof d === "string" ? new Date(d) : d;
-//   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
-// }
+function monthKey(d: Date | string = new Date()) {
+  const dt = typeof d === "string" ? new Date(d) : d;
+  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+}
 
 /** Visibilidad de “Cobranza” para NO admin */
 function shouldShowCobranzaForNonAdmin(): boolean {
-  // Ya no usamos localStorage - los datos vienen de Supabase
-  return false; // Simplificado por ahora
+  if (typeof window === "undefined") return false;
+  try {
+    if (localStorage.getItem(LS_FORCE_COBRANZA) === "1") return true; // forzado para test
+
+    const today = new Date();
+    if (today.getDate() < 5) return false;
+
+    const yyyymm = monthKey(today);
+    const raw = localStorage.getItem(LS_COBROS_MES);
+    const all = raw ? JSON.parse(raw) : {};
+    const lote = Array.isArray(all?.[yyyymm]) ? all[yyyymm] : [];
+
+    // Si aún no hay lote, mostrar si existen clientes activos (se generará al entrar a /cobranza)
+    if (!lote.length) {
+      const rawC = localStorage.getItem(LS_CLIENTES);
+      const cs = rawC ? JSON.parse(rawC) : [];
+      return Array.isArray(cs) && cs.some((c: { activo?: boolean }) => c?.activo);
+    }
+
+    // Mantener visible mientras falten pagos
+    return !lote.every((x: { pagado?: boolean }) => x?.pagado === true);
+  } catch {
+    return false;
+  }
 }
 
 export default function Sidebar() {
   const pathname = usePathname();
 
-  // Usuario/rol desde BD
-  const { user, isLoading: userLoading } = useCurrentUser();
+  // Usuario/rol
   const [checked, setChecked] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userName, setUserName] = useState<string>("");
   const [role, setRole] = useState<Role | "">("");
 
-  // Visibilidad "Cobranza"
+  // Visibilidad “Cobranza”
   const [showCobranza, setShowCobranza] = useState(false);
 
   // Hay envíos pendientes (no recogidos)
@@ -69,40 +89,68 @@ export default function Sidebar() {
 
   /* === Efecto 1: sincroniza usuario/rol === */
   useEffect(() => {
-    if (userLoading) return;
+    const syncUser = () => {
+      const u = getCurrentUser();
+      setIsAdmin(isAdminUser(u));
+      setUserName(titleCase(u?.username ?? "")); // nombre con mayúsculas
+      setRole(getRole());
+      setChecked(true);
+    };
+    syncUser();
 
-    const admin = isAdminUser(user);
-    const userRole = user?.rol as Role || "";
-    
-    console.log('🔍 [SIDEBAR] Usuario actual:', user);
-    console.log('🔍 [SIDEBAR] Es admin:', admin);
-    console.log('🔍 [SIDEBAR] Rol:', userRole);
-    
-    setIsAdmin(admin);
-    setUserName(titleCase(user?.username ?? "")); // nombre con mayúsculas
-    setRole(userRole);
-    setChecked(true);
-  }, [user, userLoading]);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === "app_user") syncUser();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
-  /* === Efecto 2: calcula visibilidad de "Cobranza" === */
+  /* === Efecto 2: calcula visibilidad de “Cobranza” === */
   useEffect(() => {
-    if (userLoading) return;
+    const recomputeCobranza = () => {
+      const u = getCurrentUser();
+      const admin = isAdminUser(u);
+      setShowCobranza(admin ? true : shouldShowCobranzaForNonAdmin());
+    };
+    recomputeCobranza();
 
-    const admin = isAdminUser(user);
-    setShowCobranza(admin ? true : shouldShowCobranzaForNonAdmin());
-  }, [user, userLoading]);
+    const onStorage = (e: StorageEvent) => {
+      if (
+        e.key === LS_COBROS_MES ||
+        e.key === LS_CLIENTES ||
+        e.key === LS_FORCE_COBRANZA ||
+        e.key === "app_user"
+      ) {
+        recomputeCobranza();
+      }
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   /* === Efecto 3: detecta si hay envíos pendientes === */
   useEffect(() => {
-    if (userLoading) return;
+    const recomputeEnvios = () => {
+      try {
+        const raw = localStorage.getItem(LS_ENVIOS);
+        const list = raw ? JSON.parse(raw) : [];
+        const pending = Array.isArray(list) && list.some((e: { status?: string }) => e?.status !== "recogido");
+        setHasPendingEnvios(Boolean(pending));
+      } catch {
+        setHasPendingEnvios(false);
+      }
+    };
+    recomputeEnvios();
 
-    // Ya no usamos localStorage - los datos vienen de Supabase
-    const pending = false; // Simplificado por ahora
-    setHasPendingEnvios(Boolean(pending));
-  }, [userLoading]);
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === LS_ENVIOS) recomputeEnvios();
+    };
+    window.addEventListener("storage", onStorage);
+    return () => window.removeEventListener("storage", onStorage);
+  }, []);
 
   /* === Menú según permisos === */
-  const isEnviosUser = role === "owner" || role === "admin" || role === "envios";
+  const isEnviosUser = role === "admin" || role === "envios";
 
   const navItems = [
     { href: "/", label: "Pantalla principal", icon: Home },
