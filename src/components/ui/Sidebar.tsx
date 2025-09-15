@@ -20,6 +20,8 @@ function titleCase(s: string) {
 }
 function roleChipClasses(role: string) {
   switch (role) {
+    case "owner":
+      return "bg-purple-50 border-purple-200 text-purple-700";
     case "admin":
       return "bg-emerald-50 border-emerald-200 text-emerald-700";
     case "tech":
@@ -123,7 +125,7 @@ export default function Sidebar() {
   }, []);
 
   /* === Menú según permisos === */
-  const isEnviosUser = role === "admin" || role === "envios";
+  const isEnviosUser = role === "owner" || role === "admin" || role === "envios";
 
   const navItems = [
     { href: "/", label: "Pantalla principal", icon: Home },

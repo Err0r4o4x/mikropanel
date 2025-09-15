@@ -12,7 +12,7 @@ export type AppUser = {
 };
 
 // Roles soportados (incluyo "viewer" por si lo usas en otros lados)
-export type Role = "admin" | "tech" | "envios" | "viewer";
+export type Role = "owner" | "admin" | "tech" | "envios" | "viewer";
 
 // ========= Utils de formato =========
 function toTitle(s: string): string {
@@ -54,7 +54,7 @@ function lsDel() {
 // ========= Normalización de rol =========
 function normalizeRole(raw?: string, isAdminFlag?: boolean): Role | "" {
   const r = String(raw ?? "").toLowerCase();
-  if (r === "admin" || isAdminFlag) return "admin";
+  if (r === "owner" || r === "admin" || isAdminFlag) return "owner";
   if (r === "tech") return "tech";
   if (r === "envios") return "envios";
   if (r === "viewer") return "viewer";
@@ -74,7 +74,7 @@ export function getCurrentUser(): AppUser | null {
       return {
         id: `u-${u}`,
         username: u,
-        rol: u.toLowerCase() === "misael" ? "admin" : "tech",
+        rol: u.toLowerCase() === "misael" ? "owner" : "tech",
       };
     }
 
@@ -105,7 +105,7 @@ export function setCurrentUser(u: AppUser | string) {
     const user: AppUser = {
       id: `u-${u}`,
       username: u,
-      rol: u.toLowerCase() === "misael" ? "admin" : "tech",
+      rol: u.toLowerCase() === "misael" ? "owner" : "tech",
     };
     lsSet(JSON.stringify(user));
     return;
@@ -126,12 +126,12 @@ export function clearCurrentUser() {
   lsDel();
 }
 
-/** Admin si: username === "misael" || rol === "admin" || isAdmin === true */
+/** Admin si: username === "misael" || rol === "owner" || rol === "admin" || isAdmin === true */
 export function isAdminUser(u: AppUser | null): boolean {
   if (!u) return false;
   const uname = (u.username ?? "").toLowerCase();
   const role = String(u.rol ?? u.role ?? "").toLowerCase();
-  return uname === "misael" || role === "admin" || u.isAdmin === true;
+  return uname === "misael" || role === "owner" || role === "admin" || u.isAdmin === true;
 }
 
 // ========= RBAC =========
@@ -139,8 +139,8 @@ export function getRole(): Role | "" {
   const u = getCurrentUser();
   // prioridad: flag admin -> admin; luego rol declarado
   const norm = normalizeRole(u?.rol ?? u?.role, u?.isAdmin);
-  // también tratamos username "misael" como admin
-  if ((u?.username ?? "").toLowerCase() === "misael") return "admin";
+  // también tratamos username "misael" como owner
+  if ((u?.username ?? "").toLowerCase() === "misael") return "owner";
   return norm;
 }
 
@@ -151,29 +151,29 @@ export function getRole(): Role | "" {
  */
 export const PERM = {
   // Configuración / administración general
-  viewConfig:   (r: Role | "") => r === "admin",
+  viewConfig:   (r: Role | "") => r === "owner" || r === "admin",
 
   // Inventario
-  newEquipo:    (r: Role | "") => r === "admin",                               // envíos NO
-  deleteEquipo: (r: Role | "") => r === "admin",                               // envíos NO
-  registrarMov: (r: Role | "") => r === "admin" || r === "tech" || r === "envios", // envíos SÍ
+  newEquipo:    (r: Role | "") => r === "owner" || r === "admin",                               // envíos NO
+  deleteEquipo: (r: Role | "") => r === "owner" || r === "admin",                               // envíos NO
+  registrarMov: (r: Role | "") => r === "owner" || r === "admin" || r === "tech" || r === "envios", // envíos SÍ
 
   // Usuarios
-  addUsuario:   (r: Role | "") => r === "admin",                               // envíos NO
-  editUsuario:  (r: Role | "") => r === "admin",                               // cambia si quieres permitir a tech
+  addUsuario:   (r: Role | "") => r === "owner" || r === "admin",                               // envíos NO
+  editUsuario:  (r: Role | "") => r === "owner" || r === "admin",                               // cambia si quieres permitir a tech
 
   // Gastos / Cobros
-  addGasto:     (r: Role | "") => r === "admin" || r === "tech",               // envíos NO
-  viewCobros:   (r: Role | "") => r === "admin",             // si no quieres que vea, deja solo "admin"
+  addGasto:     (r: Role | "") => r === "owner" || r === "admin" || r === "tech",               // envíos NO
+  viewCobros:   (r: Role | "") => r === "owner" || r === "admin",             // si no quieres que vea, deja solo "owner" y "admin"
 
   // Lectura pura
   readOnly:     (r: Role | "") => r === "viewer",
   //eliminar usuario 
-  deleteUsuario: (r: Role | "") => r === "admin",
+  deleteUsuario: (r: Role | "") => r === "owner" || r === "admin",
   // 👇 NUEVO
-  crearEnvio:      (r: Role | "") => r === "admin" || r === "envios",
-  marcarDisponible:(r: Role | "") => r === "admin" || r === "envios", // llegada a depósito
-  recogerEnvio:    (r: Role | "") => r === "admin" || r === "tech",   // retiro por técnicos
+  crearEnvio:      (r: Role | "") => r === "owner" || r === "admin" || r === "envios",
+  marcarDisponible:(r: Role | "") => r === "owner" || r === "admin" || r === "envios", // llegada a depósito
+  recogerEnvio:    (r: Role | "") => r === "owner" || r === "admin" || r === "tech",   // retiro por técnicos
 };
 
 

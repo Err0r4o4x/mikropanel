@@ -61,10 +61,10 @@ export default function CobrosPage() {
     update();
   }, []);
 
-  const canCreateAjuste = role === "admin" || role === "tech";
-  const canDeleteAjuste = role === "admin";
-  const canCreateCorte = role === "admin" || role === "tech";
-  const canDeleteCorte = role === "admin";
+  const canCreateAjuste = role === "owner" || role === "admin" || role === "tech";
+  const canDeleteAjuste = role === "owner" || role === "admin";
+  const canCreateCorte = role === "owner" || role === "admin" || role === "tech";
+  const canDeleteCorte = role === "owner" || role === "admin";
 
   // Cargar datos al montar
   useEffect(() => {
