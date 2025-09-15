@@ -39,16 +39,16 @@ export function getDisplayName(u: AppUser | null): string {
 export const APP_USER_KEY = "app_user";
 
 function lsGet(): string | null {
-  // Ya no usamos localStorage - los datos vienen de Supabase
+  // Ya no usamos localStorage para usuario - se consulta desde BD
   return null;
 }
 function lsSet(v: string) {
-  // Ya no guardamos en localStorage - los datos se guardan en Supabase
-  console.log("Guardando usuario:", v);
+  // Ya no guardamos usuario en localStorage - se consulta desde BD
+  console.log("Usuario se consulta desde BD:", v);
 }
 function lsDel() {
-  // Ya no usamos localStorage - los datos se guardan en Supabase
-  console.log("Eliminando usuario");
+  // Ya no usamos localStorage para usuario - se consulta desde BD
+  console.log("Usuario se consulta desde BD");
 }
 
 // ========= Normalización de rol =========
