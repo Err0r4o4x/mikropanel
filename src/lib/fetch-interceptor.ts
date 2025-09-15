@@ -2,22 +2,15 @@
 
 // Función para obtener el token del localStorage
 function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  try {
-    return localStorage.getItem('auth_token');
-  } catch {
-    return null;
-  }
+  // Ya no usamos localStorage - los datos vienen de Supabase
+  return null;
 }
 
 // Función para limpiar el token y redirigir al login
 function clearAuthAndRedirect() {
+  // Ya no usamos localStorage - los datos se guardan en Supabase
   if (typeof window === 'undefined') return;
-  try {
-    localStorage.removeItem('auth_token');
-    localStorage.removeItem('app_user');
-    window.location.href = '/login';
-  } catch {}
+  window.location.href = '/login';
 }
 
 // Wrapper para fetch que agrega Authorization header automáticamente

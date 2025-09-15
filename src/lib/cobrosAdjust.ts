@@ -28,8 +28,8 @@ export type ClienteAlta = {
 };
 
 /* ======================= Constantes ======================= */
-const LS_GASTOS = "app_gastos";
-const LS_AJUSTES = "app_cobros_ajustes";
+// const LS_GASTOS = "app_gastos";
+// const LS_AJUSTES = "app_cobros_ajustes";
 
 /* ======================= Utils ======================= */
 function monthKey(d = new Date()): string {
@@ -38,21 +38,13 @@ function monthKey(d = new Date()): string {
 
 /* ======================= Storage helpers ======================= */
 function readAjustes(): AjusteCobro[] {
-  try {
-    const raw = localStorage.getItem(LS_AJUSTES);
-    const list = raw ? JSON.parse(raw) : [];
-    return Array.isArray(list) ? list : [];
-  } catch {
-    return [];
-  }
+  // Ya no usamos localStorage - los datos vienen de Supabase
+  return [];
 }
 
 function writeAjustes(list: AjusteCobro[]) {
-  try {
-    localStorage.setItem(LS_AJUSTES, JSON.stringify(list));
-  } catch {
-    /* noop */
-  }
+  // Ya no guardamos en localStorage - los datos se guardan en Supabase
+  console.log("Guardando ajustes:", list);
 }
 
 /* ======================= Gastos → Ajustes negativos ======================= */
@@ -93,13 +85,8 @@ export function removeExpenseAdjustment(gastoId: string) {
  * Úsalo al entrar a Cobros por si faltara sincronización.
  */
 export function reconcileExpenseAdjustments() {
-  // Lee gastos
-  let gastos: Gasto[] = [];
-  try {
-    const raw = localStorage.getItem(LS_GASTOS);
-    const list = raw ? JSON.parse(raw) : [];
-    gastos = Array.isArray(list) ? list : [];
-  } catch {}
+  // Ya no usamos localStorage - los datos vienen de Supabase
+  const gastos: Gasto[] = [];
 
   const ajustes = readAjustes();
 

@@ -39,16 +39,16 @@ export function getDisplayName(u: AppUser | null): string {
 export const APP_USER_KEY = "app_user";
 
 function lsGet(): string | null {
-  if (typeof window === "undefined") return null;
-  try { return localStorage.getItem(APP_USER_KEY); } catch { return null; }
+  // Ya no usamos localStorage - los datos vienen de Supabase
+  return null;
 }
 function lsSet(v: string) {
-  if (typeof window === "undefined") return;
-  try { localStorage.setItem(APP_USER_KEY, v); } catch {}
+  // Ya no guardamos en localStorage - los datos se guardan en Supabase
+  console.log("Guardando usuario:", v);
 }
 function lsDel() {
-  if (typeof window === "undefined") return;
-  try { localStorage.removeItem(APP_USER_KEY); } catch {}
+  // Ya no usamos localStorage - los datos se guardan en Supabase
+  console.log("Eliminando usuario");
 }
 
 // ========= Normalización de rol =========

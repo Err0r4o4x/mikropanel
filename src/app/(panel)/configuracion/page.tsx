@@ -6,8 +6,7 @@ import { getCurrentUser, isAdminUser } from "@/lib/admin";
 import { useZonas } from "@/hooks/useSupabaseData";
 import { useTarifas } from "@/hooks/useTarifas";
 
-/** Claves localStorage */
-const LS_EQUIPOS = "app_equipos";
+/** Configuración */
 
 /** Tipos */
 type Equipo = {
@@ -81,41 +80,14 @@ export default function ConfiguracionPage() {
 
   /** ===== Inventario (cantidad + precio) ===== */
   const [equipos, setEquipos] = useState<Equipo[]>([]);
-  const [hydratedInv, setHydratedInv] = useState(false); // evita guardar antes de cargar
   const [statusInv, setStatusInv] = useState<string | null>(null);
   const [errInv, setErrInv] = useState<string | null>(null);
 
-  // Cargar equipos (y marcar hidratado)
-  useEffect(() => {
-    try {
-      const rawE = localStorage.getItem(LS_EQUIPOS);
-      if (rawE) {
-        const parsed: Equipo[] = JSON.parse(rawE);
-        if (Array.isArray(parsed)) setEquipos(parsed);
-      }
-    } catch {}
-    setHydratedInv(true);
-  }, []);
+  // Ya no usamos localStorage - los datos vienen de Supabase
 
-  // Guardar SOLO tras hidratar
-  useEffect(() => {
-    if (!hydratedInv) return;
-    try { localStorage.setItem(LS_EQUIPOS, JSON.stringify(equipos)); } catch {}
-  }, [hydratedInv, equipos]);
+  // Ya no guardamos en localStorage - los datos se guardan en Supabase
 
-  // Sincronizar cambios desde otras pestañas
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === LS_EQUIPOS && typeof e.newValue === "string") {
-        try {
-          const list = JSON.parse(e.newValue);
-          if (Array.isArray(list)) setEquipos(list);
-        } catch {}
-      }
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
+  // Ya no escuchamos eventos de localStorage - los datos vienen de Supabase
 
   /** Agrupar por etiqueta (placeholder NO suma cantidad) */
 type Grupo = {

@@ -39,37 +39,15 @@ const LS_FORCE_COBRANZA = "app_force_cobranza"; // bandera para pruebas (Iniciar
 /* ========= Envíos helpers ========= */
 const LS_ENVIOS = "app_envios"; // lista de envíos (en_camino | disponible | recogido)
 
-function monthKey(d: Date | string = new Date()) {
-  const dt = typeof d === "string" ? new Date(d) : d;
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
-}
+// function monthKey(d: Date | string = new Date()) {
+//   const dt = typeof d === "string" ? new Date(d) : d;
+//   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, "0")}`;
+// }
 
 /** Visibilidad de “Cobranza” para NO admin */
 function shouldShowCobranzaForNonAdmin(): boolean {
-  if (typeof window === "undefined") return false;
-  try {
-    if (localStorage.getItem(LS_FORCE_COBRANZA) === "1") return true; // forzado para test
-
-    const today = new Date();
-    if (today.getDate() < 5) return false;
-
-    const yyyymm = monthKey(today);
-    const raw = localStorage.getItem(LS_COBROS_MES);
-    const all = raw ? JSON.parse(raw) : {};
-    const lote = Array.isArray(all?.[yyyymm]) ? all[yyyymm] : [];
-
-    // Si aún no hay lote, mostrar si existen clientes activos (se generará al entrar a /cobranza)
-    if (!lote.length) {
-      const rawC = localStorage.getItem(LS_CLIENTES);
-      const cs = rawC ? JSON.parse(rawC) : [];
-      return Array.isArray(cs) && cs.some((c: { activo?: boolean }) => c?.activo);
-    }
-
-    // Mantener visible mientras falten pagos
-    return !lote.every((x: { pagado?: boolean }) => x?.pagado === true);
-  } catch {
-    return false;
-  }
+  // Ya no usamos localStorage - los datos vienen de Supabase
+  return false; // Simplificado por ahora
 }
 
 export default function Sidebar() {
@@ -131,14 +109,9 @@ export default function Sidebar() {
   /* === Efecto 3: detecta si hay envíos pendientes === */
   useEffect(() => {
     const recomputeEnvios = () => {
-      try {
-        const raw = localStorage.getItem(LS_ENVIOS);
-        const list = raw ? JSON.parse(raw) : [];
-        const pending = Array.isArray(list) && list.some((e: { status?: string }) => e?.status !== "recogido");
-        setHasPendingEnvios(Boolean(pending));
-      } catch {
-        setHasPendingEnvios(false);
-      }
+      // Ya no usamos localStorage - los datos vienen de Supabase
+      const pending = false; // Simplificado por ahora
+      setHasPendingEnvios(Boolean(pending));
     };
     recomputeEnvios();
 

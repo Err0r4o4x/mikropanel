@@ -16,8 +16,7 @@ import {
   Legend,
 } from "recharts";
 
-/* ===== LS keys ===== */
-const LS_AJUSTES = "app_cobros_ajustes";
+/* ===== Funciones de datos ===== */
 
 /* ===== Helpers ===== */
 const currency = (n: number) =>
@@ -79,18 +78,12 @@ export default function GastosPage() {
 
   // Helpers ajustes
   const readAjustes = (): Ajuste[] => {
-    try {
-      const raw = localStorage.getItem(LS_AJUSTES);
-      const list = raw ? JSON.parse(raw) : [];
-      return Array.isArray(list) ? list : [];
-    } catch { return []; }
+    // Ya no usamos localStorage - los datos vienen de Supabase
+    return [];
   };
   const writeAjustes = (list: Ajuste[]) => {
-    try { localStorage.setItem(LS_AJUSTES, JSON.stringify(list)); } catch {}
-    // “despertar” Cobros en este mismo tab:
-    document.dispatchEvent(new CustomEvent("ajustes-changed"));
-    // y en otros tabs:
-    window.dispatchEvent(new StorageEvent("storage", { key: LS_AJUSTES }));
+    // Ya no guardamos en localStorage - los datos se guardan en Supabase
+    console.log("Guardando ajustes:", list);
   };
 
   async function submitGasto(e?: React.FormEvent) {
